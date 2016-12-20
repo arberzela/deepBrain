@@ -23,7 +23,7 @@ their corresponding durations."""
 
         # remove the irrelevant elements from the string
         def removeIrrelevant(str_of):
-            str_of = re.sub('item \[\d\]: class = .+ name = .+ xmin = \d xmax = .+ intervals: size = \d{1,10} ', '', str_of)
+            str_of = re.sub('item \[\d\]: .+ size = \d{1,10} ', '', str_of)
             list_of = str_of.split(' ')
 
             for i in list_of:
