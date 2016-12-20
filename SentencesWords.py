@@ -53,7 +53,10 @@ their corresponding durations."""
                     float(list_of[i])
                     xminmax.append(i)
                 except ValueError:
-                    continue
+                    if '.' in list_of[i]:
+                        list_of[i] = re.sub('\.', '', list_of[i])
+                    else:
+                        continue
 
             xmin = []
             for j in range(0, len(xminmax)):
