@@ -54,7 +54,7 @@ their corresponding durations."""
                     xminmax.append(i)
                 except ValueError:
                     if '.' in list_of[i]:
-                        list_of[i] = re.sub('\.', '', list_of[i])
+                        list_of[i] = re.sub('\.','',list_of[i])
                     else:
                         continue
 
@@ -80,3 +80,14 @@ their corresponding durations."""
 
         self.words = getTimeSlots(words_list)
         self.sentences = getTimeSlots(sentc_list)
+
+    def word_percentages(self):
+        word_perc = self.sentences
+        for k, v in word_perc.items():
+            s_time = k[1] - k[0]
+            for word in v:
+                for r, s in self.words.items():
+                    if s[0] == word and r[0] >= k[0] and r[1] <= k[1]:
+                        word_perc[k][v.index(word)] = (r[1] - r[0])/s_time
+
+        return word_perc
