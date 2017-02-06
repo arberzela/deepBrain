@@ -83,11 +83,13 @@ their corresponding durations."""
 
     def word_percentages(self):
         word_perc = self.sentences
+        perc = dict()
         for k, v in word_perc.items():
+            perc[k] = []
             s_time = k[1] - k[0]
             for word in v:
                 for r, s in self.words.items():
                     if s[0] == word and r[0] >= k[0] and r[1] <= k[1]:
-                        word_perc[k][v.index(word)] = (r[1] - r[0])/s_time
+                        perc[k].append((r[1] - r[0])/s_time)
 
-        return word_perc
+        return perc
