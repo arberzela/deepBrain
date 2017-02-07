@@ -17,6 +17,8 @@ their corresponding durations."""
         f_str = re.sub('intervals \[.*?\]:|\n','',f_str)
         f_str = re.sub(' +',' ',f_str)
         f_str = re.sub('\?','',f_str)
+        f_str = re.sub('!','',f_str)
+        f_str = re.sub('\t','',f_str)
         item_2_index = f_str.find('item [2]')
         item_3_index = f_str.find('item [3]')
         str_words = f_str[item_2_index:item_3_index]
