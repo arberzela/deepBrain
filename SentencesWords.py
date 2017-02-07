@@ -18,6 +18,7 @@ their corresponding durations."""
         f_str = re.sub(' +',' ',f_str)
         f_str = re.sub('\?','',f_str)
         f_str = re.sub('!','',f_str)
+        f_str = re.sub(',','',f_str)
         f_str = re.sub('\t','',f_str)
         item_2_index = f_str.find('item [2]')
         item_3_index = f_str.find('item [3]')
@@ -82,7 +83,11 @@ their corresponding durations."""
         
 
         self.words = getTimeSlots(words_list)
-        self.sentences = getTimeSlots(sentc_list)
+        s = getTimeSlots(sentc_list)
+        for i in s.values():
+            if '' in i:
+                i.remove('')
+        self.sentences = s
 
     def word_percentages(self):
         word_perc = self.sentences
