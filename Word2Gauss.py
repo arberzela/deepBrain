@@ -23,7 +23,7 @@ def text_to_pairs(text,random_gen,half_window_size=2,nsample_per_word=1):
         for i in range(doc_len):
             if cdoc[i] == LARGEST_UINT32:
                 continue
-            for j in range(i+1,min(i,half_window_size+1,doc_len)):
+            for j in range(i+1,min(i+half_window_size+1,doc_len)):
                 if cdoc[j] == LARGEST_UINT32:
                     continue
             for k in range(nsample_per_word):
