@@ -94,10 +94,12 @@ their corresponding durations."""
         perc = dict()
         for k, v in word_perc.items():
             perc[k] = []
+            keys_visited = []
             s_time = k[1] - k[0]
             for word in v:
                 for r, s in self.words.items():
-                    if s[0] == word and r[0] >= k[0] and r[1] <= k[1]:
+                    if s[0] == word and r[0] >= k[0] and r[1] <= k[1] and r not in keys_visited:
                         perc[k].append((r[1] - r[0])/s_time)
+                        keys_visited.append(r)
 
         return perc
