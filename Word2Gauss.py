@@ -4,12 +4,38 @@ import theano.tensor as T
 import matplotlib.pyplot as plt
 import lasagne
 from itertools import islice
-
+import re
+import collections
 
 LARGEST_UINT32 = 4294967295
+DTYPE = np.float32
+
 
 def tokenizer(s):
     return s.strip().split()
+
+def create_vocabulary(corpus):
+
+    with open(corpus, encoding='utf-8') as f:
+        words = set()
+        lines_passed = 0
+        id = 0
+        vocabulary = {}
+        for line in f:
+            if lines_passed >= 1000:
+                break
+            #get only letters
+            line = re.sub('[^A-Za-zÄäÖöÜüß]+', ' ', line)
+            line = line.lower()
+            words.update(line.split())
+            lines_passed += 1
+
+        for word in words:
+            vocabulary[word] = id
+            id += 1
+
+        return vocabulary
+
 
 def text_to_pairs(text,random_gen,half_window_size=2,nsample_per_word=1):
 
@@ -23,7 +49,7 @@ def text_to_pairs(text,random_gen,half_window_size=2,nsample_per_word=1):
         for i in range(doc_len):
             if cdoc[i] == LARGEST_UINT32:
                 continue
-            for j in range(i+1,min(i+half_window_size+1,doc_len)):
+            for j in range(i+1,min(i,half_window_size+1,doc_len)):
                 if cdoc[j] == LARGEST_UINT32:
                     continue
             for k in range(nsample_per_word):
@@ -41,17 +67,22 @@ def text_to_pairs(text,random_gen,half_window_size=2,nsample_per_word=1):
                 pairs[next_pair, 4] = 1
                 next_pair += 1
     return np.ascontiguousarray(pairs[:next_pair, :])
+
+
 class Vocabulary(object):
-    def __init__(self, tokens, tokenizer=tokenizer):
+    def __init__(self, corpus, tokenizer=tokenizer):
         '''
         tokens: a {'token1': 0, 'token2': 1, ...} map of token -> id
             the ids must run from 0 to n_tokens - 1 inclusive
         tokenizer: accepts a string and returns a list of strings
         TODO: Think how to transform a corpus into tokens, unique words perhaps?
-        '''
-        self._tokens = tokens
-        self._ids = {i: token for token, i in tokens.items()}
-        self._ntokens = len(tokens)
+
+    '''
+
+
+        self._tokens = create_vocabulary(corpus)
+        self._ids = {i: token for token, i in self._tokens.items()}
+        self._ntokens = len(self._tokens)
         self._tokenizer = tokenizer
 
     def word2id(self,word):
@@ -108,6 +139,53 @@ class Vocabulary(object):
             yield pairs
             batch = list(islice(documents, batch_size))
 
-            
 
+class GaussianDistribution(object):
+
+    def __init__(self,N,size=100,mu0=0.1,sigma_mean0=10,sigma_std0=1.0,sigma_min=0.1,sigma_max=10):
+
+        self.N = N
+        self.K = size
+
+        #Parameter initialization
+
+        #mu = random normal with std mu0,mean 0
+        self.mu = mu0 * np.random.randn(self.N,self.K).astype(DTYPE)
+
+        #Sigma = random normal with mean sigma_mean0, std sigma_std0, and min/max of sigma_min, sigma_max
+        self.Sigma = np.random.randn(self.N,1).astype(DTYPE)
+        self.Sigma *= sigma_std0
+        self.Sigma += sigma_mean0
+        self.Sigma = np.maximum(sigma_min,np.minimum(self.Sigma,sigma_max))
+
+class GaussianEmbedding(object):
+
+    def __init__(self, N, size=100, covariance_type='spherical',
+                 energy='KL', C=1.0, m=0.1, M=10.0, Closs=1.0, eta=1.0):
+
+        self.dist = GaussianDistribution(N,size,0.1,M,1.0,m,M)
+        self.eta = eta
+
+        self._acc_grad_mu = np.zeros(N)
+        self._acc_grad_sigma = np.zeros(N)
+
+
+
+    def energy(self,i,j):
+        mu_i = self.dist.mu[i]
+        mu_j = self.dist.mu[j]
+        Sigma_i = self.dist.Sigma[i]
+        Sigma_j = self.dist.Sigma[j]
+
+        det_fac = self.dist.K * np.log(Sigma_j/Sigma_i)
+        trace_fac = self.dist.K * Sigma_j / Sigma_i
+
+        return -0.5 * float(
+            trace_fac * np.sum((mu_i - mu_j)**2 /Sigma_i) - self.dist.K - det_fac
+        )
+
+    def loss(self,pos,neg):
+        return max(0.0,
+                   self.Closs - self.energy.energy(*pos) + self.energy.energy(*neg)
+                   )
 
