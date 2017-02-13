@@ -170,10 +170,11 @@ for key in patientData.keys():
             calculatedEnergy = calculateEnergy(wordVoltages)
             # check if we have already a  word in our dictionary which has the same sentence and percentage. If so get the index
             indexFinalWords = checkWordPresent(wordsAndEnergies,word,percentage, sentenceStart)
-            # if the index is -1 then the word is not found. Need to create the object.
-            # We should add the energies for the same word but for different channels to the same object.
+            '''
+            if the index is -1 then the word is not found. Need to create the object.
+            We should add the energies for the same word but for different channels to the same object.
+            '''
             if(indexFinalWords != -1):
-
                 wordsAndEnergies[indexFinalWords].put(calculatedEnergy)
             else:
                 # create the object for the word
