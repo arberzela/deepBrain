@@ -196,7 +196,7 @@ class GaussianEmbedding(object):
                    )
 
      def update(self,gradients,params,eta,fac,k):
-        updates = OrderedDict()
+        
         #accumulate mu
 
         self._acc_grad_mu[k] += np.sum(gradients[:-1]**2)/len(gradients[:-1])
