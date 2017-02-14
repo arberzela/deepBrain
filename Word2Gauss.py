@@ -198,12 +198,15 @@ class GaussianEmbedding(object):
      def update(self,gradients,params,eta,fac,k):
         
         #accumulate mu
-
-        self._acc_grad_mu[k] += np.sum(gradients[:-1]**2)/len(gradients[:-1])
+        val = self.acc_grad_mu[k].get_value()
+        val += np.sum(gradients[:-1]**2)/len(gradients[:-1])
+        self.acc_mu_grad_mu[k].set_value(val)
 
         #accumulate sigma
-        accumulated_sigma = theano.shared(0.0)
-        self._acc_grad_sigma += accumulated_sigma + gradients[-1]**2
+        val = self._acc_grad_sigma.get_value()
+        val += gradients[-1]**2
+        self._acc_grad_sigma.set_value(val)
+        
 
         #updates
         #update mu
