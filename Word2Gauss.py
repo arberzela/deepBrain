@@ -166,8 +166,14 @@ class GaussianEmbedding(object):
         self.dist = GaussianDistribution(N,size,0.1,M,1.0,m,M)
         self.eta = eta
 
-        self._acc_grad_mu = np.zeros(N)
-        self._acc_grad_sigma = np.zeros(N)
+        self._acc_grad_mu = theano.shared(np.zeros(N))
+        self._acc_grad_sigma = theano.shared(np.zeros(N))
+        self.C = C
+        self.m = m
+        self.M = M
+        self.Closs = Closs
+        self.grad_mu = theano.shared(np.zeros_like(self.dist.mu))
+        self.grad_sigma = theano.shared(np.zeros_like(self.dist.Sigma))
 
 
 
@@ -189,3 +195,31 @@ class GaussianEmbedding(object):
                    self.Closs - self.energy.energy(*pos) + self.energy.energy(*neg)
                    )
 
+     def update(self,gradients,params,eta,fac,k):
+        updates = OrderedDict()
+        #accumulate mu
+
+        self._acc_grad_mu[k] += np.sum(gradients[:-1]**2)/len(gradients[:-1])
+
+        #accumulate sigma
+        accumulated_sigma = theano.shared(0.0)
+        self._acc_grad_sigma += accumulated_sigma + gradients[-1]**2
+
+        #updates
+        #update mu
+        val = self.grad_mu[k].get_value()
+        eta_mu = eta/np.sqrt(val+1.0)
+        val -= fac*eta_mu*gradients[:-1]
+        self.grad_mu[k].set_value(val)
+        l2_mu = np.sqrt(np.sum(self.grad_mu[k].get_value()**2))
+        if l2_mu > self.C:
+            val = self.grad_mu[k].get_value()
+            val *= (self.C/l2_mu)
+            self.grad_mu[k].set_value(val)
+
+        #update sigma
+        val = self.grad_sigma[k].get_value()
+        eta_sigma = eta / np.sqrt(val + 1.0)
+        val -= fac*eta*gradients[-1]
+        self.grad_sigma[k].set_value(val)
+        self.grad_sigma[k].set_value(np.maximum(self.m,np.minimum(self.M,val)))
