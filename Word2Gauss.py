@@ -6,6 +6,7 @@ import lasagne
 from itertools import islice
 import re
 import collections
+from theano import function
 
 LARGEST_UINT32 = 4294967295
 DTYPE = np.float32
