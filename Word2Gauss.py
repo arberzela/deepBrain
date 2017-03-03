@@ -226,3 +226,58 @@ class GaussianEmbedding(object):
         val -= fac*eta*gradients[-1]
         self.grad_sigma[k].set_value(val)
         self.grad_sigma[k].set_value(np.maximum(self.m,np.minimum(self.M,val)))
+        
+
+class KLdiv(object):
+    '''
+    Negative KL-div
+    pair: 2 x k+1 matrix
+    We only consider spherical covariance matrices
+    '''
+    
+    def __init__(self, pair):
+        
+        self.pair = np.float32(pair)
+        # dimensions of the multivariate Gaussian distribution
+        self.k = len(self.pair[0]) - 1
+        
+        self.mi = self.pair[0][:self.k]
+        self.mj = self.pair[1][:self.k]
+        self.si = self.pair[0][self.k]
+        self.sj = self.pair[1][self.k]
+
+        # TensorVariables for mi, mj, si, sj respectivelly.
+        self.a = T.fvector('a')
+        self.b = T.fvector('b')
+        self.c = T.fscalar('c')
+        self.d = T.fscalar('d')
+
+        # Energy as a TensorVariable
+        self.E = -0.5 * (self.k * self.d / self.c + T.sum((self.a - self.b) ** 2 / self.c) - self.k - self.k * T.log(self.d / self.c))
+
+    def energy(self):
+        enrg = function([self.a, self.b, self.c, self.d], self.E)
+        return float(enrg(self.mi, self.mj, self.si, self.sj))
+
+    def gradient(self):
+        grad = np.zeros(np.shape(self.pair))
+        
+        g1 = T.grad(self.E, self.a) # dE/dmi
+        f1 = function([self.a, self.b, self.c, self.d], g1)
+        
+        g2 = T.grad(self.E, self.b) # dE/dmj
+        f2 = function([self.a, self.b, self.c, self.d], g2)
+        
+        g3 = T.grad(self.E, self.c) # dE/dsi
+        f3 = function([self.a, self.b, self.c, self.d], g3)
+        
+        g4 = T.grad(self.E, self.d) # dE/dsj
+        f4 = function([self.a, self.b, self.c, self.d], g4)
+
+        grad[0][:-1] = f1(self.mi, self.mj, self.si, self.sj)
+        grad[1][:-1] = f2(self.mi, self.mj, self.si, self.sj)
+        grad[0,-1] = f3(self.mi, self.mj, self.si, self.sj)
+        grad[1,-1] = f4(self.mi, self.mj, self.si, self.sj)
+        
+        return grad        
+ 
