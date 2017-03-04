@@ -180,12 +180,41 @@ class GaussianEmbedding(object):
             trace_fac * np.sum((mu_i - mu_j) ** 2 / Sigma_i) - self.dist.K - det_fac
         )
 
-    def loss(self, pos, neg):
-        return max(0.0,
-                   self.Closs - self.energy.energy(*pos) + self.energy.energy(*neg)
-                   )
+    #def loss(self, pos, neg):
+     #   return max(0.0,
+      #             self.Closs - self.energy.energy(*pos) + self.energy.energy(*neg)
+       #            )
+    def loss(self,posEng,negEng):
+        return max(
+            0.0,
+            self.Closs - posEng + negEng
+        )
 
-    def update(self, gradients, params, eta, fac, k):
+    def train(self,pairs):
+        #pairs : (i_pos,j_pos) (i_neg,j_neg). comes from text_to_pairs
+        posFac = -1.0
+        negFac = 1.0
+        for pos,neg in pairs:
+            posKLDiv = KLdiv(pos)
+            negKLDiv = KLdiv(neg)
+
+            #if loss for this case is 0, there's nothing to update
+            if self.loss(posKLDiv.energy(),negKLDiv.energy()) < 1e-14:
+                continue
+
+            #update positive samples
+            posGrad = posKLDiv.gradient()
+            self.update(posGrad[0],self.eta,posFac,pos[0])
+            self.update(posGrad[1],self.eta,posFac,pos[1])
+
+            #update negative samples
+            negGrad = negKLDiv.gradient()
+            self.update(negGrad[0], self.eta, negFac, neg[0])
+            self.update(negGrad[1], self.eta, negFac, neg[1])
+
+
+
+    def update(self, gradients, eta, fac, k):
         # accumulate mu
         val = self._acc_grad_mu[k]
         val += np.sum(gradients[:-1]**2)/len(gradients[:-1])
@@ -281,6 +310,10 @@ class KLdiv(object):
     def energy(self):
         enrg = function([self.a, self.b, self.c, self.d], self.E)
         return float(enrg(self.mi, self.mj, self.si, self.sj))
+
+
+
+
 
     def gradient(self):
         grad = np.zeros(np.shape(self.pair))
