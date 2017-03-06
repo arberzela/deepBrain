@@ -136,9 +136,9 @@ class Vocabulary(object):
             pairs = text_to_pairs(text, self.random_ids,
                                   nsamples_per_word=nsamples,
                                   half_window_size=window)
-            #yield pairs
+            yield pairs
             batch = list(islice(documents, batch_size))
-            return pairs
+            #return pairs
 
 
 class GaussianDistribution(object):
@@ -355,5 +355,7 @@ if __name__=="__main__":
     with open('/media/ralvi/0A527FA0527F8F67/Project/test','r') as file:
         pairs = vocab.iter_pairs(file)
         print(pairs)
+        for pair in pairs:
+            print(pair)
 
 
