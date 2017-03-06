@@ -9,6 +9,8 @@ LARGEST_UINT32 = 4294967295
 DTYPE = np.float32
 
 
+
+
 def tokenizer(s):
     return s.strip().split()
 
@@ -35,8 +37,8 @@ def create_vocabulary(corpus):
         return vocabulary
 
 
-def text_to_pairs(text, random_gen, half_window_size=2, nsample_per_word=1):
-    npairs = sum([2 * len(doc) * half_window_size * nsample_per_word for doc in text])
+def text_to_pairs(text, random_gen, half_window_size=2, nsamples_per_word=1):
+    npairs = sum([2 * len(doc) * half_window_size * nsamples_per_word for doc in text])
     pairs = np.empty((npairs, 5), dtype=np.uint32)
     randids = random_gen(npairs)
     next_pair = 0
@@ -46,23 +48,23 @@ def text_to_pairs(text, random_gen, half_window_size=2, nsample_per_word=1):
         for i in range(doc_len):
             if cdoc[i] == LARGEST_UINT32:
                 continue
-            for j in range(i + 1, min(i, half_window_size + 1, doc_len)):
+            for j in range(i + 1, min(i + half_window_size + 1, doc_len)):
                 if cdoc[j] == LARGEST_UINT32:
                     continue
-            for k in range(nsample_per_word):
-                pairs[next_pair, 0] = cdoc[i]
-                pairs[next_pair, 1] = cdoc[j]
-                pairs[next_pair, 2] = cdoc[i]
-                pairs[next_pair, 3] = randids[next_pair]
-                pairs[next_pair, 4] = 0
-                next_pair += 1
+                for k in range(nsamples_per_word):
+                    pairs[next_pair, 0] = cdoc[i]
+                    pairs[next_pair, 1] = cdoc[j]
+                    pairs[next_pair, 2] = cdoc[i]
+                    pairs[next_pair, 3] = randids[next_pair]
+                    pairs[next_pair, 4] = 0
+                    next_pair += 1
 
-                pairs[next_pair, 0] = cdoc[i]
-                pairs[next_pair, 1] = cdoc[j]
-                pairs[next_pair, 2] = randids[next_pair]
-                pairs[next_pair, 3] = cdoc[j]
-                pairs[next_pair, 4] = 1
-                next_pair += 1
+                    pairs[next_pair, 0] = cdoc[i]
+                    pairs[next_pair, 1] = cdoc[j]
+                    pairs[next_pair, 2] = randids[next_pair]
+                    pairs[next_pair, 3] = cdoc[j]
+                    pairs[next_pair, 4] = 1
+                    next_pair += 1
     return np.ascontiguousarray(pairs[:next_pair, :])
 
 
@@ -86,6 +88,9 @@ class Vocabulary(object):
             return self._tokens[word]
         else:
             return None
+
+    def numberOfTokens(self):
+        return self._ntokens
 
     def id2word(self, id):
         if id in self._ids:
@@ -119,20 +124,21 @@ class Vocabulary(object):
     def random_ids(self, num):
         return np.random.randint(0, self._ntokens, size=num).astype(np.uint32)
 
-    def iter_pairs(self, fin, vocab, batch_size=10, nsamples=2, window=5):
+    def iter_pairs(self, fin, batch_size=10, nsamples=2, window=5):
 
         documents = iter(fin)
         batch = list(islice(documents, batch_size))
         while len(batch) > 0:
             text = [
-                vocab.tokenize_ids(doc, remove_oov=False)
+                vocab.tokenize_ids(doc, remove_oov=True)
                 for doc in batch
                 ]
-            pairs = text_to_pairs(text, vocab.random_ids,
+            pairs = text_to_pairs(text, self.random_ids,
                                   nsamples_per_word=nsamples,
                                   half_window_size=window)
-            yield pairs
+            #yield pairs
             batch = list(islice(documents, batch_size))
+            return pairs
 
 
 class GaussianDistribution(object):
@@ -336,4 +342,18 @@ class KLdiv(object):
         grad[1, -1] = f4(self.mi, self.mj, self.si, self.sj)
 
         return grad
+
+
+if __name__=="__main__":
+    #change corpus and test path
+    corpus = '/media/ralvi/0A527FA0527F8F67/Project/test'
+    vocab = Vocabulary(corpus)
+    print(vocab.numberOfTokens())
+    embeddings = GaussianEmbedding(vocab.numberOfTokens())
+
+    #generate the pairs
+    with open('/media/ralvi/0A527FA0527F8F67/Project/test','r') as file:
+        pairs = vocab.iter_pairs(file)
+        print(pairs)
+
 
