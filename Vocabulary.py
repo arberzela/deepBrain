@@ -46,29 +46,17 @@ class Vocabulary(object):
     The most important dicts are:
         * dict_wrds2idx : Maps words to idx
         * dict_idx2wrds : Maps idx to wrds
-        * dict_char2idx : Maps cars to idx
-        * dict_idx2char : Maps idx to chars
-        * dict_wrd2char : Maps wrds idx to chars idx
 
         examples: dict_wrds2idx['are'] = 1
-                  dict_char2idx[a] = 3
-                  dict_char2idx[r] = 5
-                  dict_char2idx[e] = 10
-                  dict_wrd2char[1] = [1,3,5,10,2] #1 indicate the begin of the word, 2 indicate end of a word
 
     """
 
-    def __init__(self, unk_wrd='<unkown>', unk_char='|', wrd_begin="{", wrd_end="}"):
+    def __init__(self, unk_wrd='<unkown>'):
         """
         Creates a vocabulary.
 
         :param unk_wrd: Words with are unkown (not in dicts) are replaced with this char.
 
-        :param unk_char: Chars with are unkown (not in dicts) are replaced with this string.
-
-        :param wrd_begin: Symbol to indicate the start of a word for training char or semi-char based language models
-
-        :param wrd_end: Symbol to indicate the end of a word for training char or semi-char based language models
         """
 
         # Setting the attributes
@@ -176,7 +164,7 @@ class Vocabulary(object):
 
             return ret_data_hashed, self.dict_wrds2idx, self.dict_idx2wrds
 
-    def text2idx(self, text, extend_wrd_dict=True, eos_symbol=' <eos> ', hash_as_wrd=True,
+    def text2idx(self, text, extend_wrd_dict=True, eos_symbol=' <eos> ',
                  wrd_to_lowercase=True):
         """
         Hashes a given string to the idx representation.
