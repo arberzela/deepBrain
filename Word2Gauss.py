@@ -9,8 +9,6 @@ LARGEST_UINT32 = 4294967295
 DTYPE = np.float32
 
 
-
-
 def tokenizer(s):
     return s.strip().split()
 
@@ -48,10 +46,10 @@ def text_to_pairs(text, random_gen, half_window_size=2, nsamples_per_word=1):
         for i in range(doc_len):
             if cdoc[i] == LARGEST_UINT32:
                 continue
-            for j in range(i + 1, min(i + half_window_size + 1, doc_len)):
+            for j in range(i + 1, min(i+ half_window_size + 1, doc_len)):
                 if cdoc[j] == LARGEST_UINT32:
                     continue
-                for k in range(nsamples_per_word):
+                for k in range(nsample_per_word):
                     pairs[next_pair, 0] = cdoc[i]
                     pairs[next_pair, 1] = cdoc[j]
                     pairs[next_pair, 2] = cdoc[i]
@@ -75,7 +73,6 @@ class Vocabulary(object):
             the ids must run from 0 to n_tokens - 1 inclusive
         tokenizer: accepts a string and returns a list of strings
         TODO: Think how to transform a corpus into tokens, unique words perhaps?
-
     '''
 
         self._tokens = create_vocabulary(corpus)
@@ -90,8 +87,8 @@ class Vocabulary(object):
             return None
 
     def numberOfTokens(self):
-        return self._ntokens
-
+        return self._ntokens  
+      
     def id2word(self, id):
         if id in self._ids:
             return self._ids[id]
@@ -156,8 +153,49 @@ class GaussianDistribution(object):
         self.Sigma *= sigma_std0
         self.Sigma += sigma_mean0
         self.Sigma = np.maximum(sigma_min, np.minimum(self.Sigma, sigma_max))
+        self.Gaussian = np.concatenate((self.mu, self.Sigma), axis=1)
 
+    def energy(self, i, j):
 
+        # TensorVariables for mi, mj, si, sj respectivelly.
+        a, b = T.fvectors('a', 'b')
+        c, d = T.fscalars('c', 'd')
+
+        # Energy as a TensorVariable
+        E = -0.5 * (self.K * d / c + T.sum((a - b) ** 2 / c) - self.K - self.K * T.log(d / c))
+        enrg = function([a, b, c, d], E)
+        return float(enrg(self.mu[i], self.mu[j], float(self.Sigma[i]), float(self.Sigma[j])))
+
+    def gradient(self, i, j):
+        grad = np.empty((2, self.K + 1), dtype=DTYPE)
+
+        # TensorVariables for mi, mj, si, sj respectivelly.
+        a, b = T.fvectors('a', 'b')
+        c, d = T.fscalars('c', 'd')
+        
+        # Energy as a TensorVariable
+        E = -0.5 * (self.K * d / c + T.sum((a - b) ** 2 / c) - self.K - self.K * T.log(d / c))
+        
+        g1 = T.grad(E, a) # dE/dmi
+        f1 = function([a, b, c, d], g1)
+        
+        g2 = T.grad(E, b) # dE/dmj
+        f2 = function([a, b, c, d], g2)
+        
+        g3 = T.grad(E, c) # dE/dsi
+        f3 = function([a, b, c, d], g3)
+        
+        g4 = T.grad(E, d) # dE/dsj
+        f4 = function([a, b, c, d], g4)
+
+        grad[0][:-1] = f1(self.mu[i], self.mu[j], float(self.Sigma[i]), float(self.Sigma[j]))
+        grad[1][:-1] = f2(self.mu[i], self.mu[j], float(self.Sigma[i]), float(self.Sigma[j]))
+        grad[0,-1] = f3(self.mu[i], self.mu[j], float(self.Sigma[i]), float(self.Sigma[j]))
+        grad[1,-1] = f4(self.mu[i], self.mu[j], float(self.Sigma[i]), float(self.Sigma[j]))
+        
+        return grad
+
+    
 class GaussianEmbedding(object):
     def __init__(self, N, size=100, covariance_type='spherical',
                  energy='KL', C=1.0, m=0.1, M=10.0, Closs=1.0, eta=1.0):
@@ -172,19 +210,6 @@ class GaussianEmbedding(object):
         self.Closs = Closs
         self.grad_mu = theano.shared(np.zeros_like(self.dist.mu))
         self.grad_sigma = theano.shared(np.zeros_like(self.dist.Sigma))
-
-    def energy(self, i, j):
-        mu_i = self.dist.mu[i]
-        mu_j = self.dist.mu[j]
-        Sigma_i = self.dist.Sigma[i]
-        Sigma_j = self.dist.Sigma[j]
-
-        det_fac = self.dist.K * np.log(Sigma_j / Sigma_i)
-        trace_fac = self.dist.K * Sigma_j / Sigma_i
-
-        return -0.5 * float(
-            trace_fac * np.sum((mu_i - mu_j) ** 2 / Sigma_i) - self.dist.K - det_fac
-        )
 
     #def loss(self, pos, neg):
      #   return max(0.0,
@@ -201,24 +226,20 @@ class GaussianEmbedding(object):
         posFac = -1.0
         negFac = 1.0
         for pos,neg in pairs:
-            posKLDiv = KLdiv(pos)
-            negKLDiv = KLdiv(neg)
 
             #if loss for this case is 0, there's nothing to update
-            if self.loss(posKLDiv.energy(),negKLDiv.energy()) < 1e-14:
+            if self.loss(self.dist.energy(*pos), self.dist.energy(*neg)) < 1e-14:
                 continue
 
             #update positive samples
-            posGrad = posKLDiv.gradient()
+            posGrad = self.dist.gradient(*pos)
             self.update(posGrad[0],self.eta,posFac,pos[0])
             self.update(posGrad[1],self.eta,posFac,pos[1])
 
             #update negative samples
-            negGrad = negKLDiv.gradient()
+            negGrad = self.dist.gradient(*neg)
             self.update(negGrad[0], self.eta, negFac, neg[0])
             self.update(negGrad[1], self.eta, negFac, neg[1])
-
-
 
     def update(self, gradients, eta, fac, k):
         # accumulate mu
@@ -277,72 +298,11 @@ class GaussianEmbedding(object):
         updateFunc2 = function([],updates=[updates2])
         updateFunc2()
 
-
-
        # val = self.grad_sigma[k].get_value()
        # eta_sigma = eta / np.sqrt(val + 1.0)
        # val -= fac * eta * gradients[-1]
        # self.grad_sigma[k].set_value(val)
        # self.grad_sigma[k].set_value(np.maximum(self.m, np.minimum(self.M, val)))
-
-
-class KLdiv(object):
-    '''
-    Negative KL-div
-    pair: 2 x k+1 matrix
-    We only consider spherical covariance matrices
-    '''
-
-    def __init__(self, pair):
-        self.pair = np.float32(pair)
-        # dimensions of the multivariate Gaussian distribution
-        self.k = len(self.pair[0]) - 1
-
-        self.mi = self.pair[0][:self.k]
-        self.mj = self.pair[1][:self.k]
-        self.si = self.pair[0][self.k]
-        self.sj = self.pair[1][self.k]
-
-        # TensorVariables for mi, mj, si, sj respectivelly.
-        self.a = T.fvector('a')
-        self.b = T.fvector('b')
-        self.c = T.fscalar('c')
-        self.d = T.fscalar('d')
-
-        # Energy as a TensorVariable
-        self.E = -0.5 * (
-        self.k * self.d / self.c + T.sum((self.a - self.b) ** 2 / self.c) - self.k - self.k * T.log(self.d / self.c))
-
-    def energy(self):
-        enrg = function([self.a, self.b, self.c, self.d], self.E)
-        return float(enrg(self.mi, self.mj, self.si, self.sj))
-
-
-
-
-
-    def gradient(self):
-        grad = np.zeros(np.shape(self.pair))
-
-        g1 = T.grad(self.E, self.a)  # dE/dmi
-        f1 = function([self.a, self.b, self.c, self.d], g1)
-
-        g2 = T.grad(self.E, self.b)  # dE/dmj
-        f2 = function([self.a, self.b, self.c, self.d], g2)
-
-        g3 = T.grad(self.E, self.c)  # dE/dsi
-        f3 = function([self.a, self.b, self.c, self.d], g3)
-
-        g4 = T.grad(self.E, self.d)  # dE/dsj
-        f4 = function([self.a, self.b, self.c, self.d], g4)
-
-        grad[0][:-1] = f1(self.mi, self.mj, self.si, self.sj)
-        grad[1][:-1] = f2(self.mi, self.mj, self.si, self.sj)
-        grad[0, -1] = f3(self.mi, self.mj, self.si, self.sj)
-        grad[1, -1] = f4(self.mi, self.mj, self.si, self.sj)
-
-        return grad
-
 
 if __name__=="__main__":
     #change corpus and test path
@@ -357,5 +317,3 @@ if __name__=="__main__":
         print(pairs)
         for pair in pairs:
             print(pair)
-
-
