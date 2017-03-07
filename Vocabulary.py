@@ -84,7 +84,7 @@ class Vocabulary(object):
 
         self.wrdlen[0] = len(self.unk_wrd)
         self.max_word_len = -1
-        self._tokens = len(self.dict_wrds2idx)
+        self._ntokens = len(self.dict_wrds2idx)
 
     def hash_file_linewise(self, filename, max_lines=None, num_valid_lines=None, extend_wrd_dict=True,
                            eos_symbol=' <eos> ', separate_sentences=False, wrd_to_lowercase=True):
