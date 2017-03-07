@@ -1,7 +1,42 @@
 import numpy as np
+from itertools import islice
 
-FILE_NAME_TRAIN = "train.txt"
-FILE_NAME_VALID = "valid.txt"
+
+FILE_NAME_TRAIN = "train.txt" #change accordingly
+FILE_NAME_VALID = "valid.txt" #change accordingly
+LARGEST_UINT32 = 4294967295
+
+
+def text_to_pairs(text, random_gen, half_window_size=2, nsamples_per_word=1):
+    npairs = sum([2 * len(doc) * half_window_size * nsamples_per_word for doc in text])
+    pairs = np.empty((npairs, 5), dtype=np.uint32)
+    randids = random_gen(npairs)
+    next_pair = 0
+    for doc in text:
+        cdoc = doc
+        doc_len = cdoc.shape[0]
+        for i in range(doc_len):
+            if cdoc[i] == LARGEST_UINT32:
+                continue
+            for j in range(i + 1, min(i + half_window_size + 1, doc_len)):
+                if cdoc[j] == LARGEST_UINT32:
+                    continue
+                for k in range(nsamples_per_word):
+                    pairs[next_pair, 0] = cdoc[i]
+                    pairs[next_pair, 1] = cdoc[j]
+                    pairs[next_pair, 2] = cdoc[i]
+                    pairs[next_pair, 3] = randids[next_pair]
+                    pairs[next_pair, 4] = 0
+                    next_pair += 1
+
+                    pairs[next_pair, 0] = cdoc[i]
+                    pairs[next_pair, 1] = cdoc[j]
+                    pairs[next_pair, 2] = randids[next_pair]
+                    pairs[next_pair, 3] = cdoc[j]
+                    pairs[next_pair, 4] = 1
+                    next_pair += 1
+    return np.ascontiguousarray(pairs[:next_pair, :])
+
 
 class Vocabulary(object):
     """
@@ -49,6 +84,7 @@ class Vocabulary(object):
 
         self.wrdlen[0] = len(self.unk_wrd)
         self.max_word_len = -1
+        self._tokens = len(self.dict_wrds2idx)
 
     def hash_file_linewise(self, filename, max_lines=None, num_valid_lines=None, extend_wrd_dict=True,
                            eos_symbol=' <eos> ', separate_sentences=False, wrd_to_lowercase=True):
@@ -123,10 +159,9 @@ class Vocabulary(object):
                     data_hashed_train += hashed_sentence
 
                 i += 1
-            
+
             # If we do not separate sentences we create a numpy array
             if not separate_sentences:
-
                 data_hashed_train = np.asarray(data_hashed_train, dtype='uint32')
                 data_hashed_valid = np.asarray(data_hashed_valid, dtype='uint32')
 
@@ -195,6 +230,22 @@ class Vocabulary(object):
                 data_hashed += [self.dict_wrds2idx[wrd]]
 
         return data_hashed
+
+
+    def random_ids(self, num):
+        return np.random.randint(0, self._ntokens, size=num).astype(np.uint32)
+
+    def iter_pairs(self, fin, batch_size=10, nsamples=2, window=5):
+
+        documents = iter(fin)
+        batch = list(islice(documents, batch_size))
+        while len(batch) > 0:
+
+            pairs = text_to_pairs(batch, self.random_ids,
+                                  nsamples_per_word=nsamples,
+                                  half_window_size=window)
+            yield pairs
+            batch = list(islice(documents, batch_size))
 
 
 vocab = Vocabulary()
