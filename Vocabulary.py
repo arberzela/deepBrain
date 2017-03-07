@@ -14,7 +14,7 @@ def text_to_pairs(text, random_gen, half_window_size=2, nsamples_per_word=1):
     next_pair = 0
     for doc in text:
         cdoc = doc
-        doc_len = cdoc.shape[0]
+        doc_len = len(cdoc)
         for i in range(doc_len):
             if cdoc[i] == LARGEST_UINT32:
                 continue
@@ -72,7 +72,6 @@ class Vocabulary(object):
 
         self.wrdlen[0] = len(self.unk_wrd)
         self.max_word_len = -1
-        self._ntokens = len(self.dict_wrds2idx)
 
     def hash_file_linewise(self, filename, max_lines=None, num_valid_lines=None, extend_wrd_dict=True,
                            eos_symbol=' <eos> ', separate_sentences=False, wrd_to_lowercase=True):
@@ -219,9 +218,8 @@ class Vocabulary(object):
 
         return data_hashed
 
-
     def random_ids(self, num):
-        return np.random.randint(0, self._ntokens, size=num).astype(np.uint32)
+        return np.random.randint(0, len(self.dict_wrds2idx), size=num).astype(np.uint32)
 
     def iter_pairs(self, fin, batch_size=10, nsamples=2, window=5):
 
