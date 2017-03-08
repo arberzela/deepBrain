@@ -28,11 +28,6 @@ def text_to_pairs(text, random_gen, half_window_size=2, nsamples_per_word=1):
                     pairs[next_pair, 3] = randids[next_pair]
                     next_pair += 1
 
-                    pairs[next_pair, 0] = cdoc[i]
-                    pairs[next_pair, 1] = cdoc[j]
-                    pairs[next_pair, 2] = randids[next_pair]
-                    pairs[next_pair, 3] = cdoc[j]
-                    next_pair += 1
     return np.ascontiguousarray(pairs[:next_pair, :])
 
 
