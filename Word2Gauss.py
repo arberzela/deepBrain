@@ -1,7 +1,7 @@
 import numpy as np
 import theano
 import theano.tensor as T
-from itertools import islice
+from itertools import islice, chain
 import re
 from theano import function
 import Vocabulary
@@ -101,30 +101,26 @@ class GaussianEmbedding(object):
         # pairs : (i_pos,j_pos) (i_neg,j_neg). comes from text_to_pairs
         posFac = -1.0
         negFac = 1.0
-        batch = flatten(batch)
-        for k in range(batch):
+        batch = np.asarray(list(chain.from_iterable(batch)))
+        for k in batch:
             posi = batch[k * 5]
             posj = batch[k * 5 + 1]
             negi = batch[k * 5 + 2]
             negj = batch[k * 5 + 3]
-            center_index = pairs[k * 5 + 4]
-            for (posi,posj), (negi,negj) in pairs:
 
             # if loss for this case is 0, there's nothing to update
-                if self.loss(self.dist.energy((posi,posj)), self.dist.energy((negi,negj))) < 1e-14:
-                    continue
+            if self.loss(self.dist.energy(posi,posj), self.dist.energy(negi,negj)) < 1e-14:
+                continue
 
-                # update positive samples
-                posGrad = self.dist.gradient((posi,posj))
-                self.update(posGrad[0], self.eta, posFac, posi)
-                self.update(posGrad[1], self.eta, posFac, posj)
+            # update positive samples
+            posGrad = self.dist.gradient(posi,posj)
+            self.update(posGrad[0], self.eta, posFac, posi)
+            self.update(posGrad[1], self.eta, posFac, posj)
 
             # update negative samples
-                negGrad = self.dist.gradient((negi,negj))
-                self.update(negGrad[0], self.eta, negFac, negi)
-                self.update(negGrad[1], self.eta, negFac, negj)
-
-
+            negGrad = self.dist.gradient(negi,negj)
+            self.update(negGrad[0], self.eta, negFac, negi)
+            self.update(negGrad[1], self.eta, negFac, negj)
 
     def update(self, gradients, eta, fac, k):
         # accumulate mu
