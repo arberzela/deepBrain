@@ -10,7 +10,9 @@ LARGEST_UINT32 = 4294967295
 DTYPE = np.float32
 
 
-
+def flatten(list):
+    flatList = [item for sublist in list for item in sublist]
+    return flatList
 
 class GaussianDistribution(object):
     def __init__(self, N, size=100, mu0=0.1, sigma_mean0=10, sigma_std0=1.0, sigma_min=0.1, sigma_max=10):
@@ -95,25 +97,34 @@ class GaussianEmbedding(object):
             self.Closs - posEng + negEng
         )
 
-    def train(self, pairs):
+    def train(self, batch):
         # pairs : (i_pos,j_pos) (i_neg,j_neg). comes from text_to_pairs
         posFac = -1.0
         negFac = 1.0
-        for pos, neg in pairs:
+        batch = flatten(batch)
+        for k in range(batch):
+            posi = batch[k * 5]
+            posj = batch[k * 5 + 1]
+            negi = batch[k * 5 + 2]
+            negj = batch[k * 5 + 3]
+            center_index = pairs[k * 5 + 4]
+            for (posi,posj), (negi,negj) in pairs:
 
             # if loss for this case is 0, there's nothing to update
-            if self.loss(self.dist.energy(*pos), self.dist.energy(*neg)) < 1e-14:
-                continue
+                if self.loss(self.dist.energy((posi,posj)), self.dist.energy((negi,negj))) < 1e-14:
+                    continue
 
-            # update positive samples
-            posGrad = self.dist.gradient(*pos)
-            self.update(posGrad[0], self.eta, posFac, pos[0])
-            self.update(posGrad[1], self.eta, posFac, pos[1])
+                # update positive samples
+                posGrad = self.dist.gradient((posi,posj))
+                self.update(posGrad[0], self.eta, posFac, posi)
+                self.update(posGrad[1], self.eta, posFac, posj)
 
             # update negative samples
-            negGrad = self.dist.gradient(*neg)
-            self.update(negGrad[0], self.eta, negFac, neg[0])
-            self.update(negGrad[1], self.eta, negFac, neg[1])
+                negGrad = self.dist.gradient((negi,negj))
+                self.update(negGrad[0], self.eta, negFac, negi)
+                self.update(negGrad[1], self.eta, negFac, negj)
+
+
 
     def update(self, gradients, eta, fac, k):
         # accumulate mu
