@@ -102,11 +102,11 @@ class GaussianEmbedding(object):
         posFac = -1.0
         negFac = 1.0
         batch = np.asarray(list(chain.from_iterable(batch)))
-        for k in batch:
-            posi = batch[k * 5]
-            posj = batch[k * 5 + 1]
-            negi = batch[k * 5 + 2]
-            negj = batch[k * 5 + 3]
+        for k in range(len(batch)):
+            posi = batch[k * 4]
+            posj = batch[k * 4 + 1]
+            negi = batch[k * 4 + 2]
+            negj = batch[k * 4 + 3]
 
             # if loss for this case is 0, there's nothing to update
             if self.loss(self.dist.energy(posi,posj), self.dist.energy(negi,negj)) < 1e-14:
