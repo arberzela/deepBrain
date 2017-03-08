@@ -9,11 +9,6 @@ import Vocabulary
 LARGEST_UINT32 = 4294967295
 DTYPE = np.float32
 
-
-def flatten(list):
-    flatList = [item for sublist in list for item in sublist]
-    return flatList
-
 class GaussianDistribution(object):
     def __init__(self, N, size=100, mu0=0.1, sigma_mean0=10, sigma_std0=1.0, sigma_min=0.1, sigma_max=10):
         self.N = N
@@ -86,12 +81,7 @@ class GaussianEmbedding(object):
         self.grad_mu = theano.shared(np.zeros_like(self.dist.mu))
         self.grad_sigma = theano.shared(np.zeros_like(self.dist.Sigma))
 
-        # def loss(self, pos, neg):
-        #   return max(0.0,
-        #             self.Closs - self.energy.energy(*pos) + self.energy.energy(*neg)
-        #            )
-
-    def loss(self, posEng, negEng):
+    def loss(self,posEng,negEng):
         return max(
             0.0,
             self.Closs - posEng + negEng
@@ -101,12 +91,12 @@ class GaussianEmbedding(object):
         # pairs : (i_pos,j_pos) (i_neg,j_neg). comes from text_to_pairs
         posFac = -1.0
         negFac = 1.0
-        batch = np.asarray(list(chain.from_iterable(batch)))
-        for k in range(len(batch)):
-            posi = batch[k * 4]
-            posj = batch[k * 4 + 1]
-            negi = batch[k * 4 + 2]
-            negj = batch[k * 4 + 3]
+        for pair in batch:
+            #print(pair)
+            posi = pair[0]
+            posj = pair[1]
+            negi = pair[2]
+            negj = pair[3]
 
             # if loss for this case is 0, there's nothing to update
             if self.loss(self.dist.energy(posi,posj), self.dist.energy(negi,negj)) < 1e-14:
@@ -123,68 +113,50 @@ class GaussianEmbedding(object):
             self.update(negGrad[1], self.eta, negFac, negj)
 
     def update(self, gradients, eta, fac, k):
+        
         # accumulate mu
         val = self._acc_grad_mu[k]
-        val += np.sum(gradients[:-1] ** 2) / len(gradients[:-1])
+        val += np.sum(gradients[:-1]**2)/len(gradients[:-1])
         self._acc_grad_mu[k] = val
-
-        # val = self.acc_grad_mu[k].get_value()
-        # val += np.sum(gradients[:-1] ** 2) / len(gradients[:-1])
-        # self.acc_mu_grad_mu[k].set_value(val)
 
         # accumulate sigma
         val = self._acc_grad_sigma[k]
-        val += gradients[-1] ** 2
-        self._acc_grad_sigma[k] = val
-
-        # val = self._acc_grad_sigma.get_value()
-        # val += gradients[-1] ** 2
-        # self._acc_grad_sigma.set_value(val)
+        val += gradients[-1]**2
+        self._acc_grad_sigma[k]=val
 
         # updates
         # update mu
         val = self.grad_mu[k]
         eta_mu = eta / np.sqrt(self._acc_grad_mu[k] + 1.0)
-        updates1 = (self.grad_mu, T.set_subtensor(val, val - (fac * eta_mu * gradients[:-1])))
-        updateFunc1 = function([], updates=[updates1])
+        updates1 = (self.grad_mu,T.set_subtensor(val, val - (fac*eta_mu*gradients[:-1])))
+        updateFunc1 = function([],updates=[updates1])
         updateFunc1()
-        # regularization
+        #regularization
         new_val = self.grad_mu[k]
-        l2_mu = np.sqrt(np.sum(new_val.eval() ** 2))
+        l2_mu = np.sqrt(np.sum(new_val.eval()**2))
         if l2_mu > self.C:
-            updates2 = (self.grad_mu, T.set_subtensor(new_val, new_val * (self.C / l2_mu)))
-            updateFunc2 = function([], updates=[updates2])
+            updates2 = (self.grad_mu,T.set_subtensor(new_val,new_val*(self.C/l2_mu)))
+            updateFunc2 = function([],updates=[updates2])
             updateFunc2()
 
-            # val = self.grad_mu[k].get_value()
-            # val -= fac * eta_mu * gradients[:-1]
-            # self.grad_mu[k].set_value(val)
-            # l2_mu = np.sqrt(np.sum(self.grad_mu[k].get_value() ** 2))
-            # if l2_mu > self.C:
-            #   val = self.grad_mu[k].get_value()
-            #  val *= (self.C / l2_mu)
-            # self.grad_mu[k].set_value(val)
+        self.dist.mu[k] = self.grad_mu[k].eval()
 
         # update sigma
         val = self.grad_sigma[k]
-        eta_sigma = eta / np.sqrt(self._acc_grad_sigma[k] + 1.0)
-        updates1 = (self.grad_sigma, T.set_subtensor(val, val - (fac * eta_sigma * gradients[-1])))
-        updateFunc1 = function([], updates=[updates1])
+        eta_sigma = eta/ np.sqrt(self._acc_grad_sigma[k]+1.0)
+        updates1 = (self.grad_sigma,T.set_subtensor(val,val-(fac*eta_sigma*gradients[-1])))
+        updateFunc1 = function([],updates=[updates1])
         updateFunc1()
-        # regularization
+        #regularization
         new_val = self.grad_sigma[k]
-        updates2 = (self.grad_sigma, T.set_subtensor(new_val, T.maximum(
-            float(self.m), T.minimum(float(self.M, new_val))
-        )))
-        updateFunc2 = function([], updates=[updates2])
+        updates2 = (self.grad_sigma,T.set_subtensor(new_val,T.maximum(
+            float(self.m),T.minimum(float(self.M),float(new_val.eval())))
+        ))
+        updateFunc2 = function([],updates=[updates2])
         updateFunc2()
-
-        # val = self.grad_sigma[k].get_value()
-        # eta_sigma = eta / np.sqrt(val + 1.0)
-        # val -= fac * eta * gradients[-1]
-        # self.grad_sigma[k].set_value(val)
-        # self.grad_sigma[k].set_value(np.maximum(self.m, np.minimum(self.M, val)))
-
+        
+        self.dist.Sigma[k] = self.grad_sigma[k].eval()
+        
 
 if __name__ == "__main__":
     # change corpus and test path
