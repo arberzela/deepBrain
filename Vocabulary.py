@@ -72,7 +72,7 @@ class Vocabulary(object):
         self.max_word_len = -1
 
     def hash_file_linewise(self, filename, max_lines=None, num_valid_lines=None, extend_wrd_dict=True,
-                           eos_symbol=' <eos> ', separate_sentences=False, wrd_to_lowercase=True):
+                           eos_symbol=' <eos> ', separate_sentences=True, wrd_to_lowercase=True):
 
         """
         Hashes a file linewise, i.e. hash the string representation of words/tokens to a idx representation (e.g. "That means that" to [1,2,1]).
