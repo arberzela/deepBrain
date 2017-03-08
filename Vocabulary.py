@@ -9,7 +9,7 @@ LARGEST_UINT32 = 4294967295
 
 def text_to_pairs(text, random_gen, half_window_size=2, nsamples_per_word=1):
     npairs = sum([2 * len(doc) * half_window_size * nsamples_per_word for doc in text])
-    pairs = np.empty((npairs, 5), dtype=np.uint32)
+    pairs = np.empty((npairs, 4), dtype=np.uint32)
     randids = random_gen(npairs)
     next_pair = 0
     for doc in text:
@@ -26,14 +26,12 @@ def text_to_pairs(text, random_gen, half_window_size=2, nsamples_per_word=1):
                     pairs[next_pair, 1] = cdoc[j]
                     pairs[next_pair, 2] = cdoc[i]
                     pairs[next_pair, 3] = randids[next_pair]
-                    pairs[next_pair, 4] = 0
                     next_pair += 1
 
                     pairs[next_pair, 0] = cdoc[i]
                     pairs[next_pair, 1] = cdoc[j]
                     pairs[next_pair, 2] = randids[next_pair]
                     pairs[next_pair, 3] = cdoc[j]
-                    pairs[next_pair, 4] = 1
                     next_pair += 1
     return np.ascontiguousarray(pairs[:next_pair, :])
 
