@@ -1,3 +1,4 @@
+import operator
 import os
 import numpy as np
 import h5py
@@ -183,6 +184,7 @@ for key in patientData.keys():
                 wordsAndEnergies.append(singleWord)
 print(len(wordsAndEnergies))
 
+'''
 # 3 of the most used words, ich, das, ist
 tokens = ["ich","das","ist"]
 for token in tokens:
@@ -190,6 +192,28 @@ for token in tokens:
         if(word.getName() == token):
             print(token)
             print(word.getEnergyList())
+
+'''
+# Save the distributions for each word into a dictionary, using the word as the key and a list of the distributions as a value
+dictWordEnergyVectors = {}
+for word in wordsAndEnergies:
+    wordName = (word.getName()).lower()
+    wordEnergyVector = (word.getEnergyList())
+    listOfDistributions = dictWordEnergyVectors.get(wordName)
+    if (listOfDistributions != None):
+        listOfDistributions.append(wordEnergyVector)
+    else:
+        listOfDistributions = []
+        listOfDistributions.append(wordEnergyVector)
+    dictWordEnergyVectors[wordName] = listOfDistributions
+
+#print(len(dictWordEnergyVectors))
+# order the dictionary from before by the highest word frequency
+for key in sorted(dictWordEnergyVectors, key=lambda k: len(dictWordEnergyVectors[k]), reverse = True):
+    print(key)
+    print(len(dictWordEnergyVectors.get(key)))
+
+
 
 
 
