@@ -233,6 +233,14 @@ if __name__ == "__main__":
     with open('dict.save','wb') as file:
         pickle.dump((train_data,dict,dictwrds),file,pickle.HIGHEST_PROTOCOL)
 
+    g = GaussianEmbedding(len(dict))
+    batch_pairs = vocab.iter_pairs(train_data)
+
+    while True:
+        try:
+            g.train(next(batch_pairs))
+        except StopIteration:
+            break
 
 
 
