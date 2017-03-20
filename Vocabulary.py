@@ -30,7 +30,6 @@ def text_to_pairs(text, random_gen, half_window_size=2, nsamples_per_word=1):
 
     return np.ascontiguousarray(pairs[:next_pair, :])
 
-
 class Vocabulary(object):
     """
     A vocabulary contains information about unique words/tokens and chars of a corpora.
@@ -41,17 +40,17 @@ class Vocabulary(object):
         * dict_idx2wrds : Maps idx to wrds
 
         examples: dict_wrds2idx['are'] = 1
-
+  
     """
 
-    def __init__(self, unk_wrd='<unkown>'):
+    def __init__(self, unk_wrd='<unkown>', ntokens = 0):
         """
         Creates a vocabulary.
 
         :param unk_wrd: Words with are unkown (not in dicts) are replaced with this char.
-
         """
 
+        self.ntokens = ntokens
         # Setting the attributes
         self.unk_wrd = unk_wrd
 
@@ -139,9 +138,10 @@ class Vocabulary(object):
                     data_hashed_train += hashed_sentence
 
                 i += 1
-
+            
             # If we do not separate sentences we create a numpy array
             if not separate_sentences:
+
                 data_hashed_train = np.asarray(data_hashed_train, dtype='uint32')
                 data_hashed_valid = np.asarray(data_hashed_valid, dtype='uint32')
 
@@ -153,10 +153,11 @@ class Vocabulary(object):
 
             # Saving the last hased data to vocab
             self.last_data_hashed = ret_data_hashed
-
+            self.ntokens = len(self.dict_wrds2idx)
+            
             return ret_data_hashed, self.dict_wrds2idx, self.dict_idx2wrds
 
-    def text2idx(self, text, extend_wrd_dict=True, eos_symbol=' <eos> ',
+    def text2idx(self, text, extend_wrd_dict=True, eos_symbol=' <eos> ', hash_as_wrd=True,
                  wrd_to_lowercase=True):
         """
         Hashes a given string to the idx representation.
@@ -212,20 +213,22 @@ class Vocabulary(object):
         return data_hashed
 
     def random_ids(self, num):
-        return np.random.randint(0, len(self.dict_wrds2idx), size=num).astype(np.uint32)
+        return np.random.randint(0, self.ntokens, size=num).astype(np.uint32)
 
-    def iter_pairs(self, fin, batch_size=10, nsamples=2, window=5):
+    def iter_pairs(self, fin, batch_size=10, nsamples=1, window=5):
 
         documents = iter(fin)
         batch = list(islice(documents, batch_size))
+        i = 1
         while len(batch) > 0:
 
+            print('Batch',i)
             pairs = text_to_pairs(batch, self.random_ids,
                                   nsamples_per_word=nsamples,
                                   half_window_size=window)
             yield pairs
             batch = list(islice(documents, batch_size))
-
+            i = i+1
 
 vocab = Vocabulary()
 print("Load Data")
