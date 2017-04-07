@@ -4,8 +4,9 @@ import numpy as np
 import h5py
 import math
 from SentencesWords import SentenceSlots as SS
-from energyAndWords import WordsAndEnergy
+from energyAndWords import WordsAndVoltages
 from Sentence import Sentence
+import _pickle as Cpickle
 channels = ['G_A1', 'G_A2', 'G_A3', 'G_A4', 'G_A5', 'G_A6', 'G_A7', 'G_A8', 'G_B1', 'G_B2', 'G_B3', 'G_B4',
                 'G_B5',
                 'G_B6', 'G_B7', 'G_B8', 'G_C1', 'G_C2', 'G_C3', 'G_C4', 'G_C5', 'G_C6', 'G_C7', 'G_C8', 'G_D1',
@@ -14,15 +15,7 @@ channels = ['G_A1', 'G_A2', 'G_A3', 'G_A4', 'G_A5', 'G_A6', 'G_A7', 'G_A8', 'G_B
                 'G_E7',
                 'G_E8', 'G_F1', 'G_F2', 'G_F3', 'G_F4', 'G_F5', 'G_F6', 'G_F7', 'G_F8', 'G_G1', 'G_G2', 'G_G3',
                 'G_G4',
-                'G_G5', 'G_G6', 'G_G7', 'G_G8', 'G_H1', 'G_H2', 'G_H3', 'G_H4', 'G_H5', 'G_H6', 'G_H7', 'G_H8',
-                'FL1',
-                'FL2', 'FL3', 'FL4', 'FL5', 'FL6', 'IHA1', 'IHA2', 'IHA3', 'IHA4', 'IHB1', 'IHB2', 'IHB3', 'IHB4',
-                'IHC1', 'IHC2', 'IHC3', 'IHC4', 'IHD1', 'IHD2', 'IHD3', 'IHD4', 'FLA1', 'FLA2', 'FLA3', 'FLA4',
-                'FLB1',
-                'FLB2', 'FLB3', 'FLB4', 'FLB5', 'FLB6', 'ECG', 'FP1', 'FP2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4',
-                'O1',
-                'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6', 'FZ', 'CZ', 'PZ', 'T1', 'T2', 'EOG', 'STCR', 'STCL',
-                'CAR_grid']
+                'G_G5', 'G_G6', 'G_G7', 'G_G8', 'G_H1', 'G_H2', 'G_H3', 'G_H4', 'G_H5', 'G_H6', 'G_H7', 'G_H8']
 
 class Patient:
 
@@ -76,7 +69,7 @@ class Patient:
             for j in range(data.shape[0]):
                 #index for ps markers
                 #for j in range(data.shape[0]):
-                for i in range(data.shape[2]):
+                for i in range(len(channels)):
                     if channels[i] in dataDict:
 
                         dataDict[channels[i]].append(list(data[j,2047:2047+np.int(diff[j]),i]))
@@ -149,7 +142,7 @@ patientP4 = Patient("P4")
 # getting the neuronal data
 patientData = patientP4.get_neuronal_sentences(None)
 # create a list for the EnergyAndWords objects
-wordsAndEnergies = []
+wordsAndVoltages = []
 #iterate over the channels
 for key in patientData.keys():
     # get the data for one channel
@@ -168,21 +161,21 @@ for key in patientData.keys():
             # the next word starts from the end index of the previous one
             startIndex = endIndex + 1
             # calculate the energy for the word
-            calculatedEnergy = calculateEnergy(wordVoltages)
+            #calculatedEnergy = calculateEnergy(wordVoltages)
             # check if we have already a  word in our dictionary which has the same sentence and percentage. If so get the index
-            indexFinalWords = checkWordPresent(wordsAndEnergies,word,percentage, sentenceStart)
+            indexFinalWords = checkWordPresent(wordsAndVoltages,word,percentage, sentenceStart)
             '''
             if the index is -1 then the word is not found. Need to create the object.
             We should add the energies for the same word but for different channels to the same object.
             '''
             if(indexFinalWords != -1):
-                wordsAndEnergies[indexFinalWords].put(calculatedEnergy)
+                wordsAndVoltages[indexFinalWords].put(wordVoltages)
             else:
                 # create the object for the word
-                singleWord = WordsAndEnergy(word,percentage,sentenceStart)
-                singleWord.put(calculatedEnergy)
-                wordsAndEnergies.append(singleWord)
-print(len(wordsAndEnergies))
+                singleWord = WordsAndVoltages(word,percentage,sentenceStart)
+                singleWord.put(wordVoltages)
+                wordsAndVoltages.append(singleWord)
+print(len(wordsAndVoltages))
 
 '''
 # 3 of the most used words, ich, das, ist
@@ -194,25 +187,44 @@ for token in tokens:
             print(word.getEnergyList())
 
 '''
+
+'''
 # Save the distributions for each word into a dictionary, using the word as the key and a list of the distributions as a value
-dictWordEnergyVectors = {}
-for word in wordsAndEnergies:
+
+dictWordVoltages = {}
+for word in wordsAndVoltages:
     wordName = (word.getName()).lower()
-    wordEnergyVector = (word.getEnergyList())
-    listOfDistributions = dictWordEnergyVectors.get(wordName)
-    if (listOfDistributions != None):
-        listOfDistributions.append(wordEnergyVector)
+    wordsVoltagesVector = (word.getVoltageList())
+    listOfMatriceVoltages = dictWordVoltages.get(wordName)
+    if (listOfMatriceVoltages != None):
+        listOfMatriceVoltages.append(wordsVoltagesVector)
     else:
-        listOfDistributions = []
-        listOfDistributions.append(wordEnergyVector)
-    dictWordEnergyVectors[wordName] = listOfDistributions
+        listOfMatriceVoltages = []
+        listOfMatriceVoltages.append(wordsVoltagesVector)
+    dictWordVoltages[wordName] = listOfMatriceVoltages
 
 #print(len(dictWordEnergyVectors))
 # order the dictionary from before by the highest word frequency
-for key in sorted(dictWordEnergyVectors, key=lambda k: len(dictWordEnergyVectors[k]), reverse = True):
+'''
+'''
+counterSamplePoints = 0
+counterNegativeSamplePoints = 0
+for key in sorted(dictWordVoltages, key=lambda k: len(dictWordVoltages[k]), reverse = True):
     print(key)
-    print(len(dictWordEnergyVectors.get(key)))
+    for i in range(len(dictWordVoltages.get(key))):
+        print(len(dictWordVoltages.get(key)[i]))
+        for j in range(len(dictWordVoltages.get(key)[i])):
+            for k in range(len(dictWordVoltages.get(key)[i][j])):
+                counterSamplePoints +=1
+                if((dictWordVoltages.get(key)[i][j])[k] < 0):
+                    counterNegativeSamplePoints += 1
 
+print(counterSamplePoints)
+print(counterNegativeSamplePoints)
+
+'''
+with open("wordObjects.pickle","wb") as file:
+    Cpickle.dump(wordsAndVoltages, file)
 
 
 

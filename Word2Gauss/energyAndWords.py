@@ -1,4 +1,4 @@
-class WordsAndEnergy:
+class WordsAndVoltages:
 
     def __init__(self, wordName, percentageValue, sentenceStart):
 
@@ -9,11 +9,11 @@ class WordsAndEnergy:
         # the sentence start
         self.sentenceStart = sentenceStart
         # energies for all channels.
-        self.energyChannels = []
+        self.voltageChannels = []
 
     # put the energy for one channel, it will be in order so no other information is added for the channel.
     def put(self,energy):
-        self.energyChannels.append(energy)
+        self.voltageChannels.append(energy)
 
     # get the word
     def getName(self):
@@ -25,5 +25,5 @@ class WordsAndEnergy:
     def getStartSentence(self):
         return self.sentenceStart
     # get the energy list for all channels
-    def getEnergyList(self):
-        return self.energyChannels
+    def getVoltageList(self):
+        return self.voltageChannels
