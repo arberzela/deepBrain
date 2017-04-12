@@ -26,7 +26,7 @@ for word in words:
 for element in word_dictionary:
     reshape_dictionary[element]=[]
     for matrix in word_dictionary[element]:
-        matrx = np.asarray(matrix)
+        matrix = np.asarray(matrix)
         matrix[3]=matrix[4]=matrix[11]=matrix[12]=matrix[19]=matrix[20]=matrix[16]=matrix[35]=matrix[42]=0
         matrix = np.reshape(matrix,(8,8,matrix.shape[1]))
         resMat = np.zeros((matrix.shape[0],matrix.shape[1],max_length))
