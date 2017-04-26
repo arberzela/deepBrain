@@ -44,15 +44,14 @@ def separate_data(dict_words):
     
     for word in dict_words:
         if len(dict_words[word]) >= 5:
-            train_set_x.append(list(dict_words[word][0:round((3/5) * (len(dict_words[word])))]))
-            valid_set_x.append(list(dict_words[word][round((3/5) * (len(dict_words[word]))):round((4/5) * (len(dict_words[word])))]))
-            test_set_x.append(list(dict_words[word][round((4/5) * (len(dict_words[word]))):len(dict_words[word])]))
-
-            for i in len(dict_words[word][0:round((3/5) * (len(dict_words[word])))]):
+            for i in range(len(dict_words[word][0:round((3/5) * (len(dict_words[word])))])):
+                train_set_x.append(dict_words[word][i])
                 train_set_y.append(word)
-            for i in len(dict_words[word][round((3/5) * (len(dict_words[word]))):round((4/5) * (len(dict_words[word])))]):
+            for i in range(len(dict_words[word][round((3/5) * (len(dict_words[word]))):round((4/5) * (len(dict_words[word])))])):
+                valid_set_x.append(dict_words[word][i])
                 valid_set_y.append(word)
-            for i in len(dict_words[word][round((4/5) * (len(dict_words[word]))):len(dict_words[word])]):
+            for i in range(len(dict_words[word][round((4/5) * (len(dict_words[word]))):len(dict_words[word])])):
+                test_set_x.append(dict_words[word][i])
                 test_set_y.append(word)
 
     return (np.asarray(train_set_x), np.asarray(train_set_y)), (np.asarray(valid_set_x), np.asarray(valid_set_y)), (np.asarray(test_set_x), np.asarray(test_set_y))
