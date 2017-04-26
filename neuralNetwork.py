@@ -8,9 +8,9 @@ import time
 class NeuralNetwork:
 
 
-    def build_cnn(self):
+    def build_cnn(self, nr_epochs = 10, batch_size = 100):
 
-        #merr te dhenat
+        # Get the data
         with open("data.pickle", "rb") as file:
             data = Cpickle.load(file)
         X_train, y_train = data[0]
@@ -71,12 +71,12 @@ class NeuralNetwork:
             file.write("Started Training")
 
         # We iterate over epochs:
-        for epoch in range(10):
+        for epoch in range(nr_epochs):
             # In each epoch, we do a full pass over the training data:
             train_err = 0
             train_batches = 0
             start_time = time.time()
-            for batch in self.generate_batch(X_train, y_train, 500):
+            for batch in self.generate_batch(X_train, y_train, batch_size):
                 inputs, targets = batch
                 train_err += train_fn(inputs, targets)
                 train_batches += 1
@@ -85,7 +85,7 @@ class NeuralNetwork:
             val_err = 0
             val_acc = 0
             val_batches = 0
-            for batch in self.generate_batch(X_val, y_val, 500):
+            for batch in self.generate_batch(X_val, y_val, batch_size):
                 inputs, targets = batch
                 err, acc = val_fn(inputs, targets)
                 val_err += err
@@ -103,7 +103,7 @@ class NeuralNetwork:
         test_err = 0
         test_acc = 0
         test_batches = 0
-        for batch in self.generate_batch(X_test, y_test, 500):
+        for batch in self.generate_batch(X_test, y_test, batch_size):
             inputs, targets = batch
             err, acc = val_fn(inputs, targets)
             test_err += err
@@ -119,26 +119,26 @@ class NeuralNetwork:
             Cpickle.dump(lasagne.layers.get_all_param_values(neuralNetwork), parameterFile)
 
 
-    def create_network(self, input_var=None):
+    def create_network(self, input_var=None, nr_filters = 32, fully_units = 256, softmax_units = 108):
         # Input layer, as usual:
-        network = lasagne.layers.InputLayer(shape=(500, 2649, 8, 8), input_var=input_var)
+        network = lasagne.layers.InputLayer(shape=(2649, 8, 8), input_var=input_var)
 
         # Convolutional layer with 32 kernels of size 3x3.
-        network = lasagne.layers.Conv2DLayer(network, num_filters=32, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
+        network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
         # Convolutional layer with 32 kernels of size 3x3.
-        network = lasagne.layers.Conv2DLayer(network, num_filters=32, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
+        network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
         # pooling layer
         network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
         # Convolutional layer with 32 kernels of size 3x3.
-        network = lasagne.layers.Conv2DLayer(network, num_filters=32, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
+        network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
         # Fully connected layer
-        network = lasagne.layers.DenseLayer(network, num_units=256, nonlinearity=lasagne.nonlinearities.rectify)
+        network = lasagne.layers.DenseLayer(network, num_units= fully_units, nonlinearity=lasagne.nonlinearities.rectify)
         # Softmax
-        network = lasagne.layers.DenseLayer(network, num_units= 108, nonlinearity=lasagne.nonlinearities.softmax)
+        network = lasagne.layers.DenseLayer(network, num_units= softmax_units, nonlinearity=lasagne.nonlinearities.softmax)
 
         return network
 
-    def generate_batch(self, x, y, batch_size = 500):
+    def generate_batch(self, x, y, batch_size = 100):
         train_set_x = x
         train_set_y = y
         assert(len(train_set_x) == len(train_set_y))
