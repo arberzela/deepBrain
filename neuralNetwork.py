@@ -9,14 +9,15 @@ class NeuralNetwork:
 
 
     def build_cnn(self):
-        #merr te dhenat
-        with open("data.pickle", "r") as file:
-            data = Cpickle.load(file)
 
+        #merr te dhenat
+        with open("data.pickle", "rb") as file:
+            data = Cpickle.load(file)
         X_train, y_train = data[0]
         X_val, y_val = data[1]
         X_test, y_test = data[2]
-
+        print(len(X_train))
+        print(len(y_train))
         vocabulary = list(set(y_train))
         vocabulary_length = len(vocabulary)
         word2vec = {}
@@ -75,7 +76,7 @@ class NeuralNetwork:
             train_err = 0
             train_batches = 0
             start_time = time.time()
-            for batch in self.generate_batch(X_train, y_train, 500, shuffle=True):
+            for batch in self.generate_batch(X_train, y_train, 500):
                 inputs, targets = batch
                 train_err += train_fn(inputs, targets)
                 train_batches += 1
@@ -84,7 +85,7 @@ class NeuralNetwork:
             val_err = 0
             val_acc = 0
             val_batches = 0
-            for batch in self.generate_batch(X_val, y_val, 500, shuffle=False):
+            for batch in self.generate_batch(X_val, y_val, 500):
                 inputs, targets = batch
                 err, acc = val_fn(inputs, targets)
                 val_err += err
@@ -102,7 +103,7 @@ class NeuralNetwork:
         test_err = 0
         test_acc = 0
         test_batches = 0
-        for batch in self.generate_batch(X_test, y_test, 500, shuffle=False):
+        for batch in self.generate_batch(X_test, y_test, 500):
             inputs, targets = batch
             err, acc = val_fn(inputs, targets)
             test_err += err
@@ -118,7 +119,7 @@ class NeuralNetwork:
             Cpickle.dump(lasagne.layers.get_all_param_values(neuralNetwork), parameterFile)
 
 
-    def create_network(input_var=None):
+    def create_network(self, input_var=None):
         # Input layer, as usual:
         network = lasagne.layers.InputLayer(shape=(500, 2649, 8, 8), input_var=input_var)
 
@@ -137,11 +138,11 @@ class NeuralNetwork:
 
         return network
 
-    def generate_batch(data, batch_size = 500):
-        train_set_x = data[0]
-        train_set_y = data[1]
+    def generate_batch(self, x, y, batch_size = 500):
+        train_set_x = x
+        train_set_y = y
         assert(len(train_set_x) == len(train_set_y))
-        for i in range(0, len(data[0]) - batch_size + 1, batch_size):
+        for i in range(0, len(x) - batch_size + 1, batch_size):
             yield (train_set_x[i:i + batch_size], train_set_y[i:i + batch_size])
 
 if __name__ == '__main__':
