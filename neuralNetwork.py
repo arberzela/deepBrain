@@ -18,7 +18,7 @@ class NeuralNetwork:
         self.SOFTMAX_UNITS=108
         self.W_init = W_init
         if type=="cnn":
-            self.build_cnn(self.nr_epochs, self.batch_size, self.W_init)
+            self.build_cnn(self.nr_epochs, self.batch_size)
 
 
 
