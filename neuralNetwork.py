@@ -21,17 +21,18 @@ class NeuralNetwork:
         word2vec = {}
 
         for i in range(0, vocabulary_length):
-            vec = np.zeros(vocabulary_length)
-            vec[i] = 1
-            word2vec[vocabulary[i]] = vec
+            #vec = np.zeros(vocabulary_length, dtype = np.int32)
+            #vec[i] = 1
+            word2vec[vocabulary[i]] = i
 
         y_train = [word2vec[item] for item in y_train]
         y_val = [word2vec[item] for item in y_val]
         y_test = [word2vec[item] for item in y_test]
-
-
+        y_train = np.array(y_train)
+        y_val = np.array(y_val)
+        y_test = np.array(y_test)
         input_var = T.tensor4('inputs')
-        target_var = T.ivector('targets')
+        target_var = T.lvector('targets')
 
         neuralNetwork = self.create_network(input_var)
 
@@ -52,6 +53,7 @@ class NeuralNetwork:
         # here is that we do a deterministic forward pass through the network,
         # disabling dropout layers.
         test_prediction = lasagne.layers.get_output(neuralNetwork, deterministic=True)
+        test_prediction_shape = lasagne.layers.get_output_shape(neuralNetwork)
         test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var)
         test_loss = test_loss.mean()
         # As a bonus, also create an expression for the classification accuracy:
@@ -76,8 +78,12 @@ class NeuralNetwork:
             start_time = time.time()
             for batch in self.generate_batch(X_train, y_train, shuffle=True):
                 inputs, targets = batch
+                print(targets.shape)
+                print("Target shape")
                 train_err += train_fn(inputs, targets)
                 train_batches += 1
+            print(test_prediction_shape)
+            print("Parashikimi")
 
             # And a full pass over the validation data:
             val_err = 0
@@ -119,7 +125,7 @@ class NeuralNetwork:
 
     def create_network(self, input_var=None, nr_filters = 32, fully_units = 256, softmax_units = 108):
         # Input layer, as usual:
-        network = lasagne.layers.InputLayer(shape=(2649, 8, 8), input_var=input_var)
+        network = lasagne.layers.InputLayer(shape=(10, 8, 8, 2649), input_var=input_var)
 
         # Convolutional layer with 32 kernels of size 3x3.
         network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
@@ -140,11 +146,11 @@ class NeuralNetwork:
     def generate_batch(self, x, y, batch_size = 10, shuffle=False):
         assert(len(x) == len(y))
         if shuffle:
-            indices = np.arange(len(x))
-            np.random.shuffle(indices)
+            indeces = np.arange(len(x))
+            np.random.shuffle(indeces)
         for i in range(0, len(x) - batch_size + 1, batch_size):
             if shuffle:
-                excerpt = indices[i:i + batch_size]
+                excerpt = indeces[i:i + batch_size]
             else:
                 excerpt = slice(i, i + batch_size)
             yield (x[excerpt], y[excerpt])
