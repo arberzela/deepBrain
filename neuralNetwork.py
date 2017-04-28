@@ -47,7 +47,7 @@ class NeuralNetwork:
         input_var = T.tensor4('inputs')
         target_var = T.lvector('targets')
 
-        neuralNetwork = self.create_network(input_var)
+        neuralNetwork = self.create_network(self.nr_filters, self.fully_units, input_var)
 
         # Create a loss expression for training, i.e., a scalar objective we want
         # to minimize (for our multi-class problem, it is the cross-entropy loss):
