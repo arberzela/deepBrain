@@ -2,12 +2,13 @@ import _pickle as Cpickle
 import theano
 import theano.tensor as T
 import lasagne
+from lasagne.init import *
 import numpy as np
 import time
 
 class NeuralNetwork:
 
-    def __init__(self,type,nr_epochs=10,batch_size=100,learning_rate=0.01,momentum=0.9,nr_filters = 32, fully_units = 256):
+    def __init__(self,type,nr_epochs=10,batch_size=100,learning_rate=0.01,momentum=0.9,nr_filters = 32, fully_units = 256, W_init=GlorotUniform()):
         self.nr_epochs = nr_epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -15,8 +16,9 @@ class NeuralNetwork:
         self.nr_filters = nr_filters
         self.fully_units=fully_units
         self.SOFTMAX_UNITS=108
+        self.W_init = W_init
         if type=="cnn":
-            self.build_cnn(self.nr_epochs,self.batch_size)
+            self.build_cnn(self.nr_epochs, self.batch_size, self.W_init)
 
 
 
@@ -138,13 +140,13 @@ class NeuralNetwork:
         network = lasagne.layers.InputLayer(shape=(2649, 8, 8), input_var=input_var)
 
         # Convolutional layer with 32 kernels of size 3x3.
-        network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
+        network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=self.W_init)
         # Convolutional layer with 32 kernels of size 3x3.
-        network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
+        network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=self.W_init))
         # pooling layer
         network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
         # Convolutional layer with 32 kernels of size 3x3.
-        network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
+        network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=self.W_init))
         # Fully connected layer
         network = lasagne.layers.DenseLayer(network, num_units= fully_units, nonlinearity=lasagne.nonlinearities.rectify)
         # Softmax
