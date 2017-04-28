@@ -137,7 +137,7 @@ class NeuralNetwork:
 
     def create_network(self, nr_filters, fully_units,input_var=None):
         # Input layer, as usual:
-        network = lasagne.layers.InputLayer(shape=(10, 8, 2649, 8), input_var=input_var)
+        network = lasagne.layers.InputLayer(shape=(10, 8, 8, 2649), input_var=input_var)
 
         # Convolutional layer with 32 kernels of size 3x3.
         network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=self.W_init)
