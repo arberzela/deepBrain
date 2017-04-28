@@ -7,10 +7,21 @@ import time
 
 class NeuralNetwork:
 
+    def __init__(self,type,nr_epochs=10,batch_size=100,learning_rate=0.01,momentum=0.9,nr_filters = 32, fully_units = 256):
+        self.nr_epochs = nr_epochs
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
+        self.momentum = momentum
+        self.nr_filters = nr_filters
+        self.fully_units=fully_units
+        self.SOFTMAX_UNITS=108
+        if type=="cnn":
+            self.build_cnn(self.nr_epochs,self.batch_size)
 
-    def build_cnn(self, nr_epochs = 10, batch_size = 100):
 
-        # Get the data
+
+    def build_cnn(self, nr_epochs, batch_size):
+
         with open("data.pickle", "rb") as file:
             data = Cpickle.load(file)
         X_train, y_train = data[0]
@@ -21,8 +32,8 @@ class NeuralNetwork:
         word2vec = {}
 
         for i in range(0, vocabulary_length):
-            #vec = np.zeros(vocabulary_length, dtype = np.int32)
-            #vec[i] = 1
+            # vec = np.zeros(vocabulary_length, dtype = np.int32)
+            # vec[i] = 1
             word2vec[vocabulary[i]] = i
 
         y_train = [word2vec[item] for item in y_train]
@@ -98,10 +109,10 @@ class NeuralNetwork:
 
             # Then we print the results for this epoch: # Finally, launch the training loop.
             with open("networkInfo.txt", "a") as file:
-                    file.write("Epoch {} of {} took {:.3f}s".format(epoch + 1, 10, time.time() - start_time))
-                    file.write("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-                    file.write("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
-                    file.write("  validation accuracy:\t\t{:.2f} %".format(val_acc / val_batches * 100))
+                file.write("Epoch {} of {} took {:.3f}s".format(epoch + 1, 10, time.time() - start_time))
+                file.write("  training loss:\t\t{:.6f}".format(train_err / train_batches))
+                file.write("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
+                file.write("  validation accuracy:\t\t{:.2f} %".format(val_acc / val_batches * 100))
 
         # After training, we compute and print the test error:
         test_err = 0
@@ -119,13 +130,12 @@ class NeuralNetwork:
             file.write("  test accuracy:\t\t{:.2f} %".format(test_acc / test_batches * 100))
 
         # Dumping network parameters
-        with open("parameters.pickle" , "w") as parameterFile:
+        with open("parameters.pickle", "w") as parameterFile:
             Cpickle.dump(lasagne.layers.get_all_param_values(neuralNetwork), parameterFile)
 
-
-    def create_network(self, input_var=None, nr_filters = 32, fully_units = 256, softmax_units = 108):
+    def create_network(self, nr_filters, fully_units,input_var=None):
         # Input layer, as usual:
-        network = lasagne.layers.InputLayer(shape=(10, 8, 8, 2649), input_var=input_var)
+        network = lasagne.layers.InputLayer(shape=(2649, 8, 8), input_var=input_var)
 
         # Convolutional layer with 32 kernels of size 3x3.
         network = lasagne.layers.Conv2DLayer(network, num_filters= nr_filters, filter_size=(3, 3), stride=1, pad=1, nonlinearity=lasagne.nonlinearities.rectify, W=lasagne.init.GlorotUniform())
@@ -138,13 +148,13 @@ class NeuralNetwork:
         # Fully connected layer
         network = lasagne.layers.DenseLayer(network, num_units= fully_units, nonlinearity=lasagne.nonlinearities.rectify)
         # Softmax
-        network = lasagne.layers.DenseLayer(network, num_units= softmax_units, nonlinearity=lasagne.nonlinearities.softmax)
+        network = lasagne.layers.DenseLayer(network, num_units= self.SOFTMAX_UNITS, nonlinearity=lasagne.nonlinearities.softmax)
 
         return network
 
     @classmethod
-    def generate_batch(self, x, y, batch_size = 10, shuffle=False):
-        assert(len(x) == len(y))
+    def generate_batch(self, x, y, batch_size=10, shuffle=False):
+        assert (len(x) == len(y))
         if shuffle:
             indeces = np.arange(len(x))
             np.random.shuffle(indeces)
@@ -156,5 +166,4 @@ class NeuralNetwork:
             yield (x[excerpt], y[excerpt])
 
 if __name__ == '__main__':
-    network = NeuralNetwork()
-    network.build_cnn()
+    network = NeuralNetwork("cnn")
