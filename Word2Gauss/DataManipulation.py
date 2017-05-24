@@ -7,15 +7,21 @@ from SentencesWords import SentenceSlots as SS
 from energyAndWords import WordsAndVoltages
 from Sentence import Sentence
 import _pickle as Cpickle
-channels = ['G_A1', 'G_A2', 'G_A3', 'G_A4', 'G_A5', 'G_A6', 'G_A7', 'G_A8', 'G_B1', 'G_B2', 'G_B3', 'G_B4',
-                'G_B5',
-                'G_B6', 'G_B7', 'G_B8', 'G_C1', 'G_C2', 'G_C3', 'G_C4', 'G_C5', 'G_C6', 'G_C7', 'G_C8', 'G_D1',
-                'G_D2',
-                'G_D3', 'G_D4', 'G_D5', 'G_D6', 'G_D7', 'G_D8', 'G_E1', 'G_E2', 'G_E3', 'G_E4', 'G_E5', 'G_E6',
-                'G_E7',
-                'G_E8', 'G_F1', 'G_F2', 'G_F3', 'G_F4', 'G_F5', 'G_F6', 'G_F7', 'G_F8', 'G_G1', 'G_G2', 'G_G3',
-                'G_G4',
-                'G_G5', 'G_G6', 'G_G7', 'G_G8', 'G_H1', 'G_H2', 'G_H3', 'G_H4', 'G_H5', 'G_H6', 'G_H7', 'G_H8']
+
+def get_channels(patient_path):
+    # find all the headers and load their content
+    for file in os.listdir(patient_path):
+        if file.endswith('.hdr.mat'):
+            header = sio.loadmat(patient_path + '\\' + file)
+    
+    header = header['H'][0][0][5][0] # get the array containing the channels
+    channels = list()
+    for ch in header:
+        channels.append(str(ch[0]))
+        
+    return channels
+
+channels = get_channels('C:\\Users\\user\\Desktop\\Master Project\\Bisherige Daten\\P4\\corrected_header')
 
 class Patient:
 
