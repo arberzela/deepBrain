@@ -77,10 +77,10 @@ class Patient:
                 #for j in range(data.shape[0]):
                 for i in range(len(channels)):
                     if channels[i] in dataDict:
-
-                        dataDict[channels[i]].append(list(data[j,2047:2047+np.int(diff[j]),i]))
+                        # add 1 to include the signal in the pe marker too
+                        dataDict[channels[i]].append(list(data[j, 2048:2048 + np.int(diff[j]) + 1, i]))
                     else:
-                        dataDict[channels[i]] = [list(data[j,2047:2047+np.int(diff[j]),i])]
+                        dataDict[channels[i]] = [list(data[j, 2048:2048 + np.int(diff[j]) + 1, i])]
 
 
 
