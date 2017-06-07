@@ -58,8 +58,8 @@ def saveAlignedData(patient = None):
     elif patient == 3:
         raise NotImplementedError
     elif patient in [1, 2, 4]:
-        aligned_data = AlignData(patientNr)
-        with open('patient' + str(patientNr) + 'Aligned.pickle', 'wb') as f:
+        aligned_data = AlignData(patient)
+        with open('patient' + str(patient) + 'Aligned.pickle', 'wb') as f:
             cPickle.dump(aligned_data, f)
     else:
         raise ValueError('No patient with this number!!')
