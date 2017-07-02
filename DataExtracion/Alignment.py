@@ -50,14 +50,12 @@ def AlignData(patient):
 def saveAlignedData(patient = None):
 
     if patient is None:
-        for patientNr in [1, 2, 4]:
+        for patientNr in range(1, 5):
             # except patient 3
             aligned_data = AlignData(patientNr)
             with open('patient' + str(patientNr) + 'Aligned.pickle', 'wb') as f:
                 cPickle.dump(aligned_data, f)
-    elif patient == 3:
-        raise NotImplementedError
-    elif patient in [1, 2, 4]:
+    elif patient in [1, 2, 3, 4]:
         aligned_data = AlignData(patient)
         with open('patient' + str(patient) + 'Aligned.pickle', 'wb') as f:
             cPickle.dump(aligned_data, f)
@@ -66,7 +64,7 @@ def saveAlignedData(patient = None):
 
 def loadAlignedData(patient):
 
-    if patient in [1, 2, 3]:
+    if patient in [1, 2, 3, 4]:
         with open('patient' + str(patient) + 'Aligned.pickle', 'rb') as f:
             alignedData = cPickle.load(f)
         return alignedData
