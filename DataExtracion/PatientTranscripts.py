@@ -21,6 +21,9 @@ class PatientTranscripts(object):
 
     def __str__(self):
         return self.name
+    
+    def __len__(self):
+        return(len(self.transcripts))
                 
 def get_all_transcripts():
     
