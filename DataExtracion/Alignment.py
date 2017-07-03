@@ -31,7 +31,7 @@ def samples_per_words(percentages, sentences, samples):
     return labeledData
 
 
-def AlignData(patient):
+def AlignData(patient, align_word_data = False):
     
     aligned_data = list()
     transcripts = get_all_transcripts()[patient - 1].transcripts
@@ -39,19 +39,25 @@ def AlignData(patient):
     os.chdir('C:\\Users\\user\\Desktop\\Master Project\\ongoing')
     with open('patient_' + str(patient) + '.pickle', 'rb') as f:
         data = cPickle.load(f)
-
     assert(len(transcripts) == len(data))
-    for day in range(1, len(transcripts) + 1):
-        labeledData = samples_per_words(transcripts[day].word_percentages(), transcripts[day].sentences, data[day])
-        aligned_data += labeledData
+    
+    if align_word_data: #align each word with the brain data   
+        for day in range(1, len(transcripts) + 1):
+            labeledData = samples_per_words(transcripts[day].word_percentages(), transcripts[day].sentences, data[day])
+            aligned_data += labeledData
+    else:   #align each sentence with the brain data
+        for day in range(1, len(transcripts) + 1):
+            for sentence in range(len(transcripts[day].sentences)):
+                #now we represent the sentences as strings with the space delimiter, with all uppercase letters
+                labeledData = (data[day][sentence], ' '.join(transcripts[day].sentences[sentence]).upper())
+                aligned_data.append(labeledData)
 
     return aligned_data
 
-def saveAlignedData(patient = None):
+def saveAlignedData(patient = None, align_word_data = False):
 
     if patient is None:
         for patientNr in range(1, 5):
-            # except patient 3
             aligned_data = AlignData(patientNr)
             with open('patient' + str(patientNr) + 'Aligned.pickle', 'wb') as f:
                 cPickle.dump(aligned_data, f)
