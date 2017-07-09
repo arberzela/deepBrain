@@ -126,6 +126,12 @@ def create_TFRec(patientNr):
                 writer[i].close()
             print('Processed '+str(len(sorted_utts))+' utterances')
             print(count, '\n')
+            
+            # Remove bins with no utterances
+            for i in range(min_t, max_t+1):
+                if count[i] == 0:
+                    os.remove(os.path.join(write_dir, 'train' +
+                                           '_' + str(i) + '.tfrecords'))
 
         else:
             # Create single TFRecord for valid and test partition
