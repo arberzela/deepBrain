@@ -104,5 +104,5 @@ def inputs(patientNr, eval_data, data_dir, batch_size, shuffle=False):
     # Create a queue that produces the filenames to read.
     filename_queue = tf.train.string_input_producer(filenames, shuffle=shuffle)
 
-    # Generate a batch of images and labels by building up a queue of examples.
+    # Generate a batch of ECoG data and labels by building up a queue of examples.
     return filename_queue#read_and_decode(filename_queue, nr_channels, batch_size)
