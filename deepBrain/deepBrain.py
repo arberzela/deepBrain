@@ -37,3 +37,46 @@ def inputs(patientNr, eval_data, data_dir, batch_size, use_fp16=False, shuffle=F
         feats = tf.cast(feats, tf.float16)
     return feats, labels, seq_lens
 
+
+def inference(feats, seq_lens, params):
+    '''
+    Build the deepBrain model.
+
+    :feats: ECoG features returned from inputs().
+    :seq_lens: Input sequence length for each utterance.
+    :params: parameters of the model.
+
+    :returns: logits.
+    '''
+    if params.use_fp16:
+        dtype = tf.float16
+    else:
+        dtype = tf.float32
+
+    feat_len = feats.get_shape().as_list()[-1]
+
+    # convolutional layers
+    with tf.variable_scope('conv1') as scope:
+        kernel = _variable_with_weight_decay(
+            'wights',
+            shape=[11, feat_len, 1, params.num_filters],
+            wd_value=None,
+            use_fp16=params.use_fp16)
+
+        feats = tf.expand_dims(feats, dim=-1)
+        conv = tf.nn.conv2d(feats, kernel,
+                            [1, params.temoral_stride, 1, 1],
+                             padding='SAME')
+
+        biases = _variable_on_cpu('biases', [params.num_filters],
+                                  tf.constant_initializer(-0.05),
+                                  params.use_fp16)
+        
+        bias = tf.nn.bias_add(conv, biases)
+        conv1 = tf.nn.relu(bias, name=scope.name)
+        _activation_summary(conv1)
+
+        # dropout
+        conv1_drop = tf.nn.dropout(conv1, params.keep_prob)
+
+    # recurrent layer
