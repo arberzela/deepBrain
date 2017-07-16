@@ -2,7 +2,6 @@ from datetime import datetime
 import os.path
 import re
 import time
-import argparse
 import json
 import numpy as np
 import tensorflow as tf
@@ -10,86 +9,69 @@ from tensorflow.python.client import device_lib
 #import deepBrain
 #import utils
 
+FLAGS = tf.app.flags.FLAGS
 
-def parser():
-    'Parse command line args.'
-    parser = argparse.ArgumentParser()
-    parser.add_argument('patient', type=int,
-                        help='Patient number for which the model is built')
-    parser.add_argument('--train_dir', type=str,
-                        default='..\\models\\train',
-                        help='Directory to write event logs and checkpoints')
-    parser.add_argument('--data_dir', type=str,
-                        default='.\\data\\TFRecords',
-                        help='Path to the TFRecords')
-    parser.add_argument('--max_steps', type=int, default=20,
-                        help='Number of batches to run')
-    parser.add_argument('--log_device_placement', type=bool, default=False,
-                        help='Whether to log device placement')
-    parser.add_argument('--batch_size', type=int, default=32,
-                        help='Number of inputs to process in a batch')
-    parser.add_argument('--temporal_stride', type=int, default=2,
-                        help='Stride along time')
+# Optional arguments for the model hyperparameters.
 
-    feature_parser = parser.add_mutually_exclusive_group(required=False)
-    feature_parser.add_argument('--shuffle', dest='shuffle',
-                                action='store_true')
-    feature_parser.add_argument('--no-shuffle', dest='shuffle',
-                                action='store_false')
-    parser.set_defaults(shuffle=True)
+tf.app.flags.DEFINE_integer('patient', default_value=1,
+                            docstring='''Patient number for which the model is built.''')
+tf.app.flags.DEFINE_string('train_dir', default_value='..\\models\\train',
+                           docstring='''Directory to write event logs and checkpoints.''')
+tf.app.flags.DEFINE_string('data_dir', default_value='.\\data\\TFRecords',
+                           docstring='''Path to the TFRecords.''')
+tf.app.flags.DEFINE_integer('max_steps', default_value=20,
+                           docstring='''Number of batches to run.''')
+tf.app.flags.DEFINE_boolean('log_device_placement', default_value=False,
+                           docstring='''Whether to log device placement.''')
+tf.app.flags.DEFINE_integer('batch_size', default_value=32,
+                           docstring='''Number of inputs to process in a batch.''')
+tf.app.flags.DEFINE_integer('temporal_stride', default_value=2,
+                           docstring='''Stride along time.''')
+tf.app.flags.DEFINE_boolean('shuffle', default_value=True,
+                           docstring='''Whether to shuffle or not the train data.''')
+tf.app.flags.DEFINE_boolean('use_fp16', default_value=False,
+                           docstring='''Type of data.''')
+tf.app.flags.DEFINE_float('keep_prob', default_value=0.5,
+                           docstring='''Keep probability for dropout.''')
+tf.app.flags.DEFINE_integer('num_hidden', default_value=1024,
+                           docstring='''Number of hidden nodes.''')
+tf.app.flags.DEFINE_integer('num_rnn_layers', default_value=2,
+                           docstring='''Number of recurrent layers.''')
+tf.app.flags.DEFINE_string('checkpoint', default_value=None,
+                           docstring='''Continue training from checkpoint file.''')
+tf.app.flags.DEFINE_string('rnn_type', default_value='uni-dir',
+                           docstring='''uni-dir or bi-dir.''')
+tf.app.flags.DEFINE_float('initial_lr', default_value=0.00001,
+                           docstring='''Initial learning rate for training.''')
+tf.app.flags.DEFINE_integer('num_filters', default_value=0.9999,
+                           docstring='''Number of convolutional filters.''')
+tf.app.flags.DEFINE_float('moving_avg_decay', default_value=0.5,
+                           docstring='''Decay to use for the moving average of weights.''')
+tf.app.flags.DEFINE_integer('num_epochs_per_decay', default_value=5,
+                           docstring='''Epochs after which learning rate decays.''')
+tf.app.flags.DEFINE_float('lr_decay_factor', default_value=0.9,
+                           docstring='''Learning rate decay factor.''')
 
-    feature_parser = parser.add_mutually_exclusive_group(required=False)
-    feature_parser.add_argument('--use_fp16', dest='use_fp16',
-                                action='store_true')
-    feature_parser.add_argument('--use_fp32', dest='use_fp16',
-                                action='store_false')
-    parser.set_defaults(use_fp16=False)
-
-    parser.add_argument('--keep_prob', type=float, default=0.5,
-                        help='Keep probability for dropout')
-    parser.add_argument('--num_hidden', type=int, default=1024,
-                        help='Number of hidden nodes')
-    parser.add_argument('--num_rnn_layers', type=int, default=2,
-                        help='Number of recurrent layers')
-    parser.add_argument('--checkpoint', type=str, default=None,
-                        help='Continue training from checkpoint file')
-    parser.add_argument('--rnn_type', type=str, default='uni-dir',
-                        help='uni-dir or bi-dir')
-    parser.add_argument('--initial_lr', type=float, default=0.00001,
-                        help='Initial learning rate for training')
-    parser.add_argument('--num_filters', type=int, default=64,
-                        help='Number of convolutional filters')
-    parser.add_argument('--moving_avg_decay', type=float, default=0.9999,
-                        help='Decay to use for the moving average of weights')
-    parser.add_argument('--num_epochs_per_decay', type=int, default=5,
-                        help='Epochs after which learning rate decays')
-    parser.add_argument('--lr_decay_factor', type=float, default=0.9,
-                        help='Learning rate decay factor')
-    
-    args = parser.parse_args()
-
-    # Read architecture hyper-parameters from checkpoint file
-    # if one is provided.
-    if args.checkpoint is not None:
-        param_file = args.checkpoint + '/deepBrain_parameters.json'
-        with open(param_file, 'r') as file:
-            params = json.load(file)
-            # Read network architecture parameters from previously saved
-            # parameter file.
-            args.num_hidden = params['num_hidden']
-            args.num_rnn_layers = params['num_rnn_layers']
-            args.rnn_type = params['rnn_type']
-            args.num_filters = params['num_filters']
-            args.use_fp16 = params['use_fp16']
-            args.temporal_stride = params['temporal_stride']
-            args.initial_lr = params['initial_lr']
-    return args
+# Read architecture hyper-parameters from checkpoint file if one is provided.
+if FLAGS.checkpoint is not None:
+    param_file = FLAGS.checkpoint + '\\deepBrain_parameters.json'
+    with open(param_file, 'r') as file:
+        params = json.load(file)
+        # Read network architecture parameters from previously saved
+        # parameter file.
+        FLAGS.num_hidden = params['num_hidden']
+        FLAGS.num_rnn_layers = params['num_rnn_layers']
+        FLAGS.rnn_type = params['rnn_type']
+        FLAGS.num_filters = params['num_filters']
+        FLAGS.use_fp16 = params['use_fp16']
+        FLAGS.temporal_stride = params['temporal_stride']
+        FLAGS.initial_lr = params['initial_lr']
 
 
 def loss(scope, feats, labels, seq_lens):
     """Calculate the total loss of the deepBrain model.
     This function builds the graph for computing the loss.
-    ARGS:
+    FLAGS:
       feats: Tensor of shape BxCHxT representing the
              brain features.
       labels: sparse tensor holding labels of each utterance.
@@ -101,10 +83,10 @@ def loss(scope, feats, labels, seq_lens):
     """
 
     # Build inference Graph.
-    logits = deepBrain.inference(feats, seq_lens, ARGS)
+    logits = deepBrain.inference(feats, seq_lens, FLAGS)
 
     # Build the portion of the Graph calculating the losses.
-    strided_seq_lens = tf.div(seq_lens, ARGS.temporal_stride)
+    strided_seq_lens = tf.div(seq_lens, FLAGS.temporal_stride)
     _ = deepBrain.loss(logits, labels, strided_seq_lens)
 
     # Assemble all of the losses for the current tower only.
@@ -147,15 +129,15 @@ def set_learning_rate():
 
     # Calculate the learning rate schedule.
     num_batches_per_epoch = (deepBrain.NUM_PER_EPOCH_FOR_TRAIN /
-                             ARGS.batch_size)
-    decay_steps = int(num_batches_per_epoch * ARGS.num_epochs_per_decay)
+                             FLAGS.batch_size)
+    decay_steps = int(num_batches_per_epoch * FLAGS.num_epochs_per_decay)
 
     # Decay the learning rate exponentially based on the number of steps.
     learning_rate = tf.train.exponential_decay(
-        ARGS.initial_lr,
+        FLAGS.initial_lr,
         global_step,
         decay_steps,
-        ARGS.lr_decay_factor,
+        FLAGS.lr_decay_factor,
         staircase=True)
 
     return learning_rate, global_step
@@ -165,18 +147,16 @@ def fetch_data():
     """ Fetch features, labels and sequence_lengths from a common queue."""
 
     feats, labels, seq_lens = deepBrain.inputs(eval_data='train',
-                                                data_dir=ARGS.data_dir,
-                                                batch_size=ARGS.batch_size,
-                                                use_fp16=ARGS.use_fp16,
-                                                shuffle=ARGS.shuffle)
+                                                data_dir=FLAGS.data_dir,
+                                                batch_size=FLAGS.batch_size,
+                                                use_fp16=FLAGS.use_fp16,
+                                                shuffle=FLAGS.shuffle)
 
     return feats, labels, seq_lens
 
 
-def main():
+def main(argv=None):
     #TODO
     
-
 if __name__ == '__main__':
-    ARGS = parser()
-    main()
+    tf.app.run()
