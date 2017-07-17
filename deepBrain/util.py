@@ -28,7 +28,7 @@ def _activation_summary(x):
   tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
 
-def _variable_on_cpu(name, shape, initializer):
+def _variable_on_cpu(name, shape, initializer, use_fp16):
   """
     Helper to create a Variable stored on CPU memory.
 
@@ -39,12 +39,12 @@ def _variable_on_cpu(name, shape, initializer):
     :returns: Variable Tensor
   """
   with tf.device('/cpu:0'):
-    dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
+    dtype = tf.float16 if use_fp16 else tf.float32
     var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
   return var
 
 
-def _variable_with_weight_decay(name, shape, stddev, wd):
+def _variable_with_weight_decay(name, shape, wd, use_fp16):
   """
     Helper to create an initialized Variable with weight decay.
     Note that the Variable is initialized with a truncated normal distribution.
@@ -58,7 +58,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
 
     :returns: Variable Tensor
   """
-  dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
+  dtype = tf.float16 if use_fp16 else tf.float32
   var = _variable_on_cpu(
       name,
       shape,
@@ -66,7 +66,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
                                                      mode='FAN_IN',
                                                      uniform=False,
                                                      seed=None,
-                                                     dtype=dtype))
+                                                     dtype=dtype), use_fp16)
   if wd is not None:
     weight_decay = tf.cast(tf.multiply(tf.nn.l2_loss(var),
                                        wd, name='weight_loss'),
