@@ -7,7 +7,66 @@ import read_TFRec
 
 NUM_CLASSES = read_TFRec.NUM_CLASSES
 
-def inputs(patientNr, eval_data, data_dir, batch_size, use_fp16=False, shuffle=False):
+FLAGS = tf.app.flags.FLAGS
+
+# Optional arguments for the model hyperparameters.
+
+tf.app.flags.DEFINE_integer('patient', default_value=1,
+                            docstring='''Patient number for which the model is built.''')
+tf.app.flags.DEFINE_string('train_dir', default_value='..\\models\\train',
+                           docstring='''Directory to write event logs and checkpoints.''')
+tf.app.flags.DEFINE_string('data_dir', default_value='.\\data\\TFRecords',
+                           docstring='''Path to the TFRecords.''')
+tf.app.flags.DEFINE_integer('max_steps', default_value=20,
+                           docstring='''Number of batches to run.''')
+tf.app.flags.DEFINE_boolean('log_device_placement', default_value=False,
+                           docstring='''Whether to log device placement.''')
+tf.app.flags.DEFINE_integer('batch_size', default_value=32,
+                           docstring='''Number of inputs to process in a batch.''')
+tf.app.flags.DEFINE_integer('temporal_stride', default_value=2,
+                           docstring='''Stride along time.''')
+tf.app.flags.DEFINE_boolean('shuffle', default_value=True,
+                           docstring='''Whether to shuffle or not the train data.''')
+tf.app.flags.DEFINE_boolean('use_fp16', default_value=False,
+                           docstring='''Type of data.''')
+tf.app.flags.DEFINE_float('keep_prob', default_value=0.5,
+                           docstring='''Keep probability for dropout.''')
+tf.app.flags.DEFINE_integer('num_hidden', default_value=1024,
+                           docstring='''Number of hidden nodes.''')
+tf.app.flags.DEFINE_integer('num_rnn_layers', default_value=2,
+                           docstring='''Number of recurrent layers.''')
+tf.app.flags.DEFINE_string('checkpoint', default_value=None,
+                           docstring='''Continue training from checkpoint file.''')
+tf.app.flags.DEFINE_string('rnn_type', default_value='uni-dir',
+                           docstring='''uni-dir or bi-dir.''')
+tf.app.flags.DEFINE_float('initial_lr', default_value=0.00001,
+                           docstring='''Initial learning rate for training.''')
+tf.app.flags.DEFINE_integer('num_filters', default_value=0.9999,
+                           docstring='''Number of convolutional filters.''')
+tf.app.flags.DEFINE_float('moving_avg_decay', default_value=0.5,
+                           docstring='''Decay to use for the moving average of weights.''')
+tf.app.flags.DEFINE_integer('num_epochs_per_decay', default_value=5,
+                           docstring='''Epochs after which learning rate decays.''')
+tf.app.flags.DEFINE_float('lr_decay_factor', default_value=0.9,
+                           docstring='''Learning rate decay factor.''')
+
+# Read architecture hyper-parameters from checkpoint file if one is provided.
+if FLAGS.checkpoint is not None:
+    param_file = FLAGS.checkpoint + '\\deepBrain_parameters.json'
+    with open(param_file, 'r') as file:
+        params = json.load(file)
+        # Read network architecture parameters from previously saved
+        # parameter file.
+        FLAGS.num_hidden = params['num_hidden']
+        FLAGS.num_rnn_layers = params['num_rnn_layers']
+        FLAGS.rnn_type = params['rnn_type']
+        FLAGS.num_filters = params['num_filters']
+        FLAGS.use_fp16 = params['use_fp16']
+        FLAGS.temporal_stride = params['temporal_stride']
+        FLAGS.initial_lr = params['initial_lr']
+
+        
+def inputs(eval_data, shuffle=False):
     """
     Construct input for the model evaluation using the Reader ops.
 
@@ -26,14 +85,14 @@ def inputs(patientNr, eval_data, data_dir, batch_size, use_fp16=False, shuffle=F
     :raises:
       ValueError: If no data_dir
     """
-    if not data_dir:
+    if not FLAGS.data_dir:
         raise ValueError('Please supply a data_dir')
-    feats, labels, seq_lens = read_TFRec.inputs(patientNr=patientNr,
+    feats, labels, seq_lens = read_TFRec.inputs(patientNr=FLAGS.patient,
                                                 eval_data=eval_data,
-                                                data_dir=data_dir,
-                                                batch_size=batch_size,
+                                                data_dir=FLAGS.data_dir,
+                                                batch_size=FLAGS.batch_size,
                                                 shuffle=shuffle)
-    if use_fp16:
+    if FLAGS.use_fp16:
         feats = tf.cast(feats, tf.float16)
     return feats, labels, seq_lens
 
