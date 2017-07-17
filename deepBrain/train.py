@@ -6,8 +6,8 @@ import json
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.client import device_lib
-#import deepBrain
-#import utils
+import deepBrain
+from deepBrain import FLAGS
 
 
 def loss(scope, feats, labels, seq_lens):
