@@ -95,39 +95,42 @@ def inputs(eval_data, shuffle=False):
     return feats, labels, seq_lens
 
 
-def conv_layers(feat_len):
+def conv_layer(l_input, kernel_shape):
     '''
     Convolutional layers wrapper function.
 
-    :feat_len: number of ECoG channels (non-variable dimension in this case)
+    :feats: input of conv layer
+    :kernel_shape: shape of filter
 
-    :returns: tensor variable
-    
-    for conv_layer in range(1, FLAGS.num_conv_layers + 1):
-        with tf.variable_scope('conv' + str(conv_layer)) as scope:
-            kernel = _variable_with_weight_decay(
-                'weights',
-                shape=[11, feat_len, 1, FLAGS.num_filters],
-                wd_value=None,
-                use_fp16=FLAGS.use_fp16)
-
-            # expand the dimension of feats from [batch_size, T, CH] to [batch_size, T, CH, 1]
-            feats = tf.expand_dims(feats, dim=-1)
-            conv = tf.nn.conv2d(feats, kernel,
-                                [1, FLAGS.temporal_stride, 1, 1],
-                                 padding='SAME')
-
-            biases = _variable_on_cpu('biases', [FLAGS.num_filters],
-                                      tf.constant_initializer(-0.05),
-                                      FLAGS.use_fp16)
-        
-            bias = tf.nn.bias_add(conv, biases)
-            conv1 = tf.nn.relu(bias, name=scope.name)
-            _activation_summary(conv1)
-
-            # dropout
-            conv1_drop = tf.nn.dropout(conv1, FLAGS.keep_prob)
+    :returns:
+       :conv_drop: tensor variable
+       :kernel: tensor variable
     '''
+    
+    kernel = _variable_with_weight_decay(
+        'weights',
+        shape=kernel_shape,
+        wd_value=None,
+        use_fp16=FLAGS.use_fp16)
+
+    # expand the dimension of feats from [batch_size, T, CH] to [batch_size, T, CH, 1]
+    if len(feats.get_shape().as_list()) == 3:
+        l_input = tf.expand_dims(l_input, dim=-1)
+    conv = tf.nn.conv2d(l_input, kernel,
+                        [1, FLAGS.temporal_stride, 1, 1],
+                         padding='SAME')
+
+    biases = _variable_on_cpu('biases', [FLAGS.num_filters],
+                                tf.constant_initializer(-0.05),
+                                FLAGS.use_fp16)
+        
+    bias = tf.nn.bias_add(conv, biases)
+    conv = tf.nn.relu(bias, name=scope.name)
+    _activation_summary(conv)
+
+    # dropout
+    conv_drop = tf.nn.dropout(conv, FLAGS.keep_prob)
+    return conv_drop, kernel
 
 
 def inference(feats, seq_lens):
@@ -145,36 +148,20 @@ def inference(feats, seq_lens):
 
     # convolutional layers
     with tf.variable_scope('conv1') as scope:
-        kernel = _variable_with_weight_decay(
-            'weights',
-            shape=[11, feat_len, 1, FLAGS.num_filters],
-            wd_value=None,
-            use_fp16=FLAGS.use_fp16)
+        conv_drop, kernel = conv_layer(l_input=feats,
+                                       kernel_shape=shape=[11, feat_len, 1, FLAGS.num_filters])
 
-        # expand the dimension of feats from [batch_size, T, CH] to [batch_size, T, CH, 1]
-        feats = tf.expand_dims(feats, dim=-1)
-        conv = tf.nn.conv2d(feats, kernel,
-                            [1, FLAGS.temporal_stride, 1, 1],
-                             padding='SAME')
-
-        biases = _variable_on_cpu('biases', [FLAGS.num_filters],
-                                  tf.constant_initializer(-0.05),
-                                  FLAGS.use_fp16)
-        
-        bias = tf.nn.bias_add(conv, biases)
-        conv1 = tf.nn.relu(bias, name=scope.name)
-        _activation_summary(conv1)
-
-        # dropout
-        conv1_drop = tf.nn.dropout(conv1, FLAGS.keep_prob)
-
-    # TODO: add 2 other conv layers
+    if FLAGS.num_conv_layers > 1:
+        for layer in range(2, FLAGS.num_conv_layers + 1):
+            with tf.variable_scope('conv' + str(layer)) as scope:
+                conv_drop, _ = conv_layer(l_input=conv_drop,
+                                               kernel_shape=[11, feat_len, FLAGS.num_filters, FLAGS.num_filters])
 
     # recurrent layer
     with tf.variable_scope('rnn') as scope:
 
         # Reshape conv output to fit rnn input
-        rnn_input = tf.reshape(conv1_drop, [FLAGS.batch_size, -1,
+        rnn_input = tf.reshape(conv_drop, [FLAGS.batch_size, -1,
                                             feat_len*FLAGS.num_filters])
         # Permute into time major order for rnn
         rnn_input = tf.transpose(rnn_input, perm=[1, 0, 2])
