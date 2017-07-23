@@ -113,9 +113,6 @@ def conv_layer(l_input, kernel_shape):
         wd_value=None,
         use_fp16=FLAGS.use_fp16)
 
-    # expand the dimension of feats from [batch_size, T, CH] to [batch_size, T, CH, 1]
-    if len(feats.get_shape().as_list()) == 3:
-        l_input = tf.expand_dims(l_input, dim=-1)
     conv = tf.nn.conv2d(l_input, kernel,
                         [1, FLAGS.temporal_stride, 1, 1],
                          padding='SAME')
@@ -146,6 +143,9 @@ def inference(feats, seq_lens):
 
     feat_len = feats.get_shape().as_list()[-1]
 
+    # expand the dimension of feats from [batch_size, T, CH] to [batch_size, T, CH, 1]
+    feats = tf.expand_dims(feats, dim=-1)
+        
     # convolutional layers
     with tf.variable_scope('conv1') as scope:
         conv_drop, kernel = conv_layer(l_input=feats,
