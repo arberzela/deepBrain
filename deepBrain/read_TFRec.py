@@ -14,10 +14,11 @@ def read_and_decode(filename_queue, nr_channels, batch_size):
     Construct a queued batch of ECoG features and transcripts.
    
     :filename_queue: queue of filenames to read data from.
+    :nr_channels: number of valid ECoG channels for the specified patient
     :batch_size: Number of utterances per batch.
     
     :returns:
-      feats: mfccs. 4D tensor of [batch_size, height, width, 3] size.
+      feats: 4D tensor of [batch_size, T, CH, 1] size.
       labels: transcripts. List of length batch_size.
       seq_lens: Sequence Lengths. List of length batch_size.
     """
@@ -74,11 +75,11 @@ def inputs(patientNr, eval_data, data_dir, batch_size, shuffle=False):
     :data_dir: Path to the data directory.
     :batch_size: Number of utterances per batch.
     :shuffle: bool, indicating if the data should be shuffled or not.
-
+    
     :returns:
-      :images: Images. 4D tensor of
-              [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-      :labels: Labels. 1D tensor of [batch_size] size.
+      feats: 4D tensor of [batch_size, T, CH, 1] size.
+      labels: transcripts. List of length batch_size.
+      seq_lens: Sequence Lengths. List of length batch_size.
     """
     nr_channels = len(speech_channels['p'+str(patientNr)])
     if eval_data == 'train':
