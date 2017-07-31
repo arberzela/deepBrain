@@ -23,7 +23,7 @@ def train():
             feats, labels, seq_lens = deepBrain.inputs(eval_data='train')
 
         # Build a Graph that computes the logits predictions from the inference model.
-        logits = deepBrain.inference(feats, seq_lens, FLAGS)
+        logits = deepBrain.inference(feats, seq_lens)
         # Build the portion of the Graph calculating the losses.
         strided_seq_lens = tf.div(seq_lens, FLAGS.temporal_stride)
         loss = deepBrain.loss(logits, labels, strided_seq_lens)

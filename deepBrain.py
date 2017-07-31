@@ -112,7 +112,7 @@ def inputs(eval_data, shuffle=False):
     return feats, labels, seq_lens
 
 
-def conv_layer(l_input, kernel_shape):
+def conv_layer(l_input, kernel_shape, scope):
     '''
     Convolutional layers wrapper function.
 
@@ -166,20 +166,22 @@ def inference(feats, seq_lens):
     # convolutional layers
     with tf.variable_scope('conv1') as scope:
         conv_drop, kernel = conv_layer(l_input=feats,
-                                       kernel_shape=[11, feat_len, 1, FLAGS.num_filters])
+                                       kernel_shape=[11, feat_len, 1, FLAGS.num_filters],
+                                       scope=scope)
 
     if FLAGS.num_conv_layers > 1:
         for layer in range(2, FLAGS.num_conv_layers + 1):
             with tf.variable_scope('conv' + str(layer)) as scope:
                 conv_drop, _ = conv_layer(l_input=conv_drop,
-                                          kernel_shape=[11, feat_len, FLAGS.num_filters, FLAGS.num_filters])
+                                          kernel_shape=[11, feat_len, FLAGS.num_filters, FLAGS.num_filters],
+                                          scope=scope)
 
 
     # recurrent layer
     with tf.variable_scope('rnn') as scope:
 
         # Reshape conv output to fit rnn input
-        rnn_input = tf.reshape(conv_drop, [batch_size, -1, feat_len*num_filters])
+        rnn_input = tf.reshape(conv_drop, [FLAGS.batch_size, -1, feat_len*FLAGS.num_filters])
         
         # Permute into time major order for rnn
         rnn_input = tf.transpose(rnn_input, perm=[1, 0, 2])
@@ -187,14 +189,14 @@ def inference(feats, seq_lens):
         # Make one instance of cell on a fixed device,
         # and use copies of the weights on other devices.
         if cell_type == 'LSTM':
-            cell = tf.nn.rnn_cell.LSTMCell(num_hidden, activation=tf.nn.relu6)
+            cell = tf.nn.rnn_cell.LSTMCell(FLAGS.num_hidden, activation=tf.nn.relu6)
         elif cell_type == 'CustomRNN':
-            cell = custom_RNN.LayerNormalizedLSTMCell(num_hidden, activation=tf.nn.relu6, use_fp16=use_fp16)
+            cell = custom_RNN.LayerNormalizedLSTMCell(FLAGS.num_hidden, activation=tf.nn.relu6, use_fp16=use_fp16)
             
-        drop_cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=keep_prob)
-        multi_cell = tf.nn.rnn_cell.MultiRNNCell([drop_cell] * num_rnn_layers)
+        drop_cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=FLAGS.keep_prob)
+        multi_cell = tf.nn.rnn_cell.MultiRNNCell([drop_cell] * FLAGS.num_rnn_layers)
 
-        seq_lens = tf.div(seq_lens, temporal_stride)
+        seq_lens = tf.div(seq_lens, FLAGS.temporal_stride)
         if rnn_type == 'uni-dir':
             rnn_outputs, _ = tf.nn.dynamic_rnn(multi_cell, rnn_input,
                                                sequence_length=seq_lens,
