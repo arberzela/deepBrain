@@ -188,9 +188,9 @@ def inference(feats, seq_lens):
         
         # Make one instance of cell on a fixed device,
         # and use copies of the weights on other devices.
-        if cell_type == 'LSTM':
+        if FLAGS.cell_type == 'LSTM':
             cell = tf.nn.rnn_cell.LSTMCell(FLAGS.num_hidden, activation=tf.nn.relu6)
-        elif cell_type == 'CustomRNN':
+        elif FLAGS.cell_type == 'CustomRNN':
             cell = custom_RNN.LayerNormalizedLSTMCell(FLAGS.num_hidden, activation=tf.nn.relu6, use_fp16=use_fp16)
             
         drop_cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=FLAGS.keep_prob)
