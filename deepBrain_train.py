@@ -8,13 +8,17 @@ import tensorflow as tf
 from tensorflow.python.client import device_lib
 import deepBrain
 from deepBrain import FLAGS
-#import utils
+import util
 
 
 def train():
+    """Train deepBrain for a number of steps."""
     with tf.Graph().as_default():
         global_step = tf.contrib.framework.get_or_create_global_step()
 
+        # Get features, labels and sequence lengths for the deepBrain model.
+        # Force input pipeline to CPU:0 to avoid operations sometimes ending up on
+        # GPU and resulting in a slow down.
         with tf.device('/cpu:0'):
             feats, labels, seq_lens = deepBrain.inputs(eval_data='train',
                                                        data_dir=FLAGS.data_dir,
@@ -22,104 +26,54 @@ def train():
                                                        use_fp16=FLAGS.use_fp16,
                                                        shuffle=FLAGS.shuffle)
 
-
+        # Build a Graph that computes the logits predictions from the inference model.
         logits = deepBrain.inference(feats, seq_lens, FLAGS)
         # Build the portion of the Graph calculating the losses.
         strided_seq_lens = tf.div(seq_lens, FLAGS.temporal_stride)
         loss = deepBrain.loss(logits, labels, strided_seq_lens)
 
         train_op = deepBrain.train(loss, global_step)
-        
-def loss(scope, feats, labels, seq_lens):
-    """Calculate the total loss of the deepBrain model.
-    This function builds the graph for computing the loss.
-    FLAGS:
-      feats: Tensor of shape BxCHxT representing the
-             brain features.
-      labels: sparse tensor holding labels of each utterance.
-      seq_lens: tensor of shape [batch_size] holding
-              the sequence length per input utterance.
-    Returns:
-       Tensor of shape [batch_size] containing
-       the total loss for a batch of data
-    """
 
-    # Build inference Graph.
-    logits = deepBrain.inference(feats, seq_lens, FLAGS)
+        class _LoggerHook(tf.train.SessionRunHook):
+            """Logs loss and runtime."""
+            def begin(self):
+                self._step = -1
+                self._start_time = time.time()
 
-    # Build the portion of the Graph calculating the losses.
-    strided_seq_lens = tf.div(seq_lens, FLAGS.temporal_stride)
-    _ = deepBrain.loss(logits, labels, strided_seq_lens)
+            def before_run(self, run_context):
+                self._step += 1
+                return tf.train.SessionRunArgs(loss)  # Asks for loss value.
 
-    # Assemble all of the losses for the current tower only.
-    losses = tf.get_collection('losses', scope)
+            def after_run(self, run_context, run_values):
+                if self._step % FLAGS.log_frequency == 0:
+                    current_time = time.time()
+                    duration = current_time - self._start_time
+                    self._start_time = current_time
 
-    # Calculate the total loss for the current tower.
-    total_loss = tf.add_n(losses, name='total_loss')
+                    loss_value = run_values.results
+                    examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
+                    sec_per_batch = float(duration / FLAGS.log_frequency)
 
-    # Compute the moving average of all individual losses and the total loss.
-    loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
-    loss_averages_op = loss_averages.apply(losses + [total_loss])
+                    format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f sec/batch)')
+                    print (format_str % (datetime.now(), self._step, loss_value,
+                                         examples_per_sec, sec_per_batch))
 
-    # Attach a scalar summary to all individual losses and the total loss;
-    # do the same for the averaged version of the losses.
-    for loss in losses + [total_loss]:
-        # Remove 'tower_[0-9]/' from the name in case this is a
-        # multi-GPU training session. This helps the clarity
-        # of presentation on tensorboard.
-        loss_name = re.sub('%s_[0-9]*/' % helper_routines.TOWER_NAME, '',
-                           loss.op.name)
-        # Name each loss as '(raw)' and name the moving average
-        # version of the loss as the original loss name.
-        tf.scalar_summary(loss_name + '(raw)', loss)
-        tf.scalar_summary(loss_name, loss_averages.average(loss))
-
-    # Without this loss_averages_op would never run
-    with tf.control_dependencies([loss_averages_op]):
-        total_loss = tf.identity(total_loss)
-    return total_loss
+        with tf.train.MonitoredTrainingSession(
+            checkpoint_dir=FLAGS.train_dir,
+            hooks=[tf.train.StopAtStepHook(last_step=FLAGS.max_steps),
+                   tf.train.NanTensorHook(loss),
+                   _LoggerHook()],
+            config=tf.ConfigProto(
+                log_device_placement=FLAGS.log_device_placement)) as mon_sess:
+            while not mon_sess.should_stop():
+                mon_sess.run(train_op)
 
 
-def set_learning_rate():
-    """ Learning rate reguralization. """
-
-    # Create a variable to count the number of train() calls.
-    # This equals the number of batches processed.
-    global_step = tf.get_variable(name='global_step', shape=[],
-                                  initializer=tf.constant_initializer(0),
-                                  trainable=False)
-
-    # Calculate the learning rate schedule.
-    num_batches_per_epoch = (deepBrain.NUM_PER_EPOCH_FOR_TRAIN /
-                             FLAGS.batch_size)
-    decay_steps = int(num_batches_per_epoch * FLAGS.num_epochs_per_decay)
-
-    # Decay the learning rate exponentially based on the number of steps.
-    learning_rate = tf.train.exponential_decay(
-        FLAGS.initial_lr,
-        global_step,
-        decay_steps,
-        FLAGS.lr_decay_factor,
-        staircase=True)
-
-    return learning_rate, global_step
-
-
-def fetch_data():
-    """ Fetch features, labels and sequence_lengths from a common queue."""
-
-    feats, labels, seq_lens = deepBrain.inputs(eval_data='train',
-                                                data_dir=FLAGS.data_dir,
-                                                batch_size=FLAGS.batch_size,
-                                                use_fp16=FLAGS.use_fp16,
-                                                shuffle=FLAGS.shuffle)
-
-    return feats, labels, seq_lens
-
-
-def main(argv=None):
-    #TODO
-    print(FLAGS.patient)
+def main(argv=None):  # pylint: disable=unused-argument
+  if tf.gfile.Exists(FLAGS.train_dir):
+    tf.gfile.DeleteRecursively(FLAGS.train_dir)
+  tf.gfile.MakeDirs(FLAGS.train_dir)
+  train()
 
 if __name__ == '__main__':
     tf.app.run()
