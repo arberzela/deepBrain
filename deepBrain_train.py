@@ -20,11 +20,7 @@ def train():
         # Force input pipeline to CPU:0 to avoid operations sometimes ending up on
         # GPU and resulting in a slow down.
         with tf.device('/cpu:0'):
-            feats, labels, seq_lens = deepBrain.inputs(eval_data='train',
-                                                       data_dir=FLAGS.data_dir,
-                                                       batch_size=FLAGS.batch_size,
-                                                       use_fp16=FLAGS.use_fp16,
-                                                       shuffle=FLAGS.shuffle)
+            feats, labels, seq_lens = deepBrain.inputs(eval_data='train')
 
         # Build a Graph that computes the logits predictions from the inference model.
         logits = deepBrain.inference(feats, seq_lens, FLAGS)
