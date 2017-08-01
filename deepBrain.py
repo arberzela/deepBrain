@@ -197,7 +197,7 @@ def inference(feats, seq_lens):
         multi_cell = tf.nn.rnn_cell.MultiRNNCell([drop_cell] * FLAGS.num_rnn_layers)
 
         seq_lens = tf.div(seq_lens, FLAGS.temporal_stride)
-        if rnn_type == 'uni-dir':
+        if FLAGS.rnn_type == 'uni-dir':
             rnn_outputs, _ = tf.nn.dynamic_rnn(multi_cell, rnn_input,
                                                sequence_length=seq_lens,
                                                dtype=dtype, time_major=True, 
