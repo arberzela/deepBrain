@@ -4,7 +4,6 @@ and apply weight decay.
 """
 import re
 import tensorflow as tf
-from tensorflow.python.client import device_lib
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -31,7 +30,7 @@ def _activation_summary(x):
 
 def _variable(name, shape, initializer, use_fp16):
   """
-    Helper to create a Variable. Give priority to the GPU.
+    Helper to create a Variable.
 
     :name: name of the variable
     :shape: list of ints
@@ -39,15 +38,9 @@ def _variable(name, shape, initializer, use_fp16):
 
     :returns: Variable Tensor
   """
-  local_device_names = [device.name for device in device_lib.list_local_devices()]
-  if '/gpu:0' in local_device_names:
-    with tf.device('/gpu:0'):
-      dtype = tf.float16 if use_fp16 else tf.float32
-      var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
-  else:
-    with tf.device('/cpu:0'):
-      dtype = tf.float16 if use_fp16 else tf.float32
-      var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
+  with tf.device('/cpu:0'):
+    dtype = tf.float16 if use_fp16 else tf.float32
+    var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
   return var
 
 

@@ -48,9 +48,9 @@ def read_and_decode(filename_queue, nr_channels, batch_size):
         input_length=tf.cast(context_parsed['seq_len'], tf.int32),
         tensors=[sequence_parsed['feats'], context_parsed['labels']],
         batch_size=batch_size,
-        bucket_boundaries=list(range(100, 1900, 100)),
+        bucket_boundaries=list(range(100, 5000, 100)),
         allow_smaller_final_batch=True,
-        num_threads=16,
+        num_threads=1,
         dynamic_pad=True)
 
     return feats, tf.cast(labels, tf.int32), seq_len

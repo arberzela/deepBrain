@@ -14,11 +14,13 @@ tf.app.flags.DEFINE_string('train_dir', default_value='.\\models\\train',
                            docstring='''Directory to write event logs and checkpoints.''')
 tf.app.flags.DEFINE_string('data_dir', default_value='.\\data\\TFRecords\\',
                            docstring='''Path to the TFRecords.''')
+tf.app.flags.DEFINE_integer('num_gpus', default_value=1,
+                            docstring="""How many GPUs to use.""")
 tf.app.flags.DEFINE_integer('max_steps', default_value=1000,
                            docstring='''Number of batches to run.''')
 tf.app.flags.DEFINE_boolean('log_device_placement', default_value=False,
                            docstring='''Whether to log device placement.''')
-tf.app.flags.DEFINE_integer('batch_size', default_value=32,
+tf.app.flags.DEFINE_integer('batch_size', default_value=2,
                            docstring='''Number of inputs to process in a batch.''')
 tf.app.flags.DEFINE_integer('temporal_stride', default_value=2,
                            docstring='''Stride along time.''')
@@ -28,11 +30,11 @@ tf.app.flags.DEFINE_boolean('use_fp16', default_value=False,
                            docstring='''Type of data.''')
 tf.app.flags.DEFINE_float('keep_prob', default_value=0.5,
                            docstring='''Keep probability for dropout.''')
-tf.app.flags.DEFINE_integer('num_hidden', default_value=1024,
+tf.app.flags.DEFINE_integer('num_hidden', default_value=2048,
                            docstring='''Number of hidden nodes.''')
 tf.app.flags.DEFINE_integer('num_conv_layers', default_value=1,
                            docstring='''Number of convolutional layers.''')
-tf.app.flags.DEFINE_integer('num_rnn_layers', default_value=2,
+tf.app.flags.DEFINE_integer('num_rnn_layers', default_value=1,
                            docstring='''Number of recurrent layers.''')
 tf.app.flags.DEFINE_string('checkpoint', default_value=None,
                            docstring='''Continue training from checkpoint file.''')
@@ -102,10 +104,11 @@ def inputs(eval_data, shuffle=False):
     """
     if not FLAGS.data_dir:
         raise ValueError('Please supply a data_dir')
+    tot_batch_size = FLAGS.batch_size * FLAGS.num_gpus
     feats, labels, seq_lens = read_TFRec.inputs(patientNr=FLAGS.patient,
                                                 eval_data=eval_data,
                                                 data_dir=FLAGS.data_dir,
-                                                batch_size=FLAGS.batch_size,
+                                                batch_size=tot_batch_size,
                                                 shuffle=shuffle)
     if FLAGS.use_fp16:
         feats = tf.cast(feats, tf.float16)
@@ -270,8 +273,8 @@ def _add_loss_summaries(total_loss):
     for each_loss in losses + [total_loss]:
         # Name each loss as '(raw)' and name the moving average
         # version of the loss as the original loss name.
-        tf.scalar_summary(each_loss.op.name + ' (raw)', each_loss)
-        tf.scalar_summary(each_loss.op.name, loss_averages.average(each_loss))
+        tf.summary.scalar(each_loss.op.name + ' (raw)', each_loss)
+        tf.summary.scalar(each_loss.op.name, loss_averages.average(each_loss))
 
     return loss_averages_op
 
