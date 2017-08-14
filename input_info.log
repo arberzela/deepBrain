@@ -1,0 +1,84 @@
+Creating JSON files for patient 1!
+Processing trainset!
+Processed 306 utterances!
+Number of channels 32
+Min duration:  82
+Max duration:  4166 
+
+Processing validset!
+Processed 38 utterances!
+Number of channels 32
+Min duration:  365
+Max duration:  3909 
+
+Processing testset!
+Processed 39 utterances!
+Number of channels 32
+Min duration:  326
+Max duration:  3405 
+
+
+
+Creating JSON files for patient 2!
+Processing trainset!
+Processed 239 utterances!
+Number of channels 26
+Min duration:  117
+Max duration:  3200 
+
+Processing validset!
+Processed 30 utterances!
+Number of channels 26
+Min duration:  233
+Max duration:  2378 
+
+Processing testset!
+Processed 30 utterances!
+Number of channels 26
+Min duration:  619
+Max duration:  2307 
+
+
+
+Creating JSON files for patient 3!
+Processing trainset!
+Processed 260 utterances!
+Number of channels 18
+Min duration:  134
+Max duration:  5875 
+
+Processing validset!
+Processed 32 utterances!
+Number of channels 18
+Min duration:  54
+Max duration:  2193 
+
+Processing testset!
+Processed 33 utterances!
+Number of channels 18
+Min duration:  391
+Max duration:  2461 
+
+
+
+Creating JSON files for patient 4!
+Processing trainset!
+Processed 578 utterances!
+Number of channels 17
+Min duration:  54
+Max duration:  3978 
+
+Processing validset!
+Processed 72 utterances!
+Number of channels 17
+Min duration:  159
+Max duration:  2459 
+
+Processing testset!
+Processed 73 utterances!
+Number of channels 17
+Min duration:  156
+Max duration:  3281 
+
+
+
