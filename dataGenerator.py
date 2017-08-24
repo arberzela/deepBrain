@@ -1,12 +1,13 @@
 import numpy as np
 import json
+import random
 from operator import itemgetter
 from concurrent.futures import ThreadPoolExecutor, wait
 
 from utils import text_to_int_sequence, sparse_tensor_feed
 
 
-class TrainDataGenerator(object):
+class DataGenerator(object):
     def __init__(self, json_file, batch_size):
         '''
         Read the json file that holds the data and separate the data into batches
@@ -25,12 +26,20 @@ class TrainDataGenerator(object):
         unsorted_feats = np.array(unsorted_feats)
         unsorted_texts = np.array(unsorted_texts)
         indices_sorted, sorted_durations = zip(*sorted(enumerate(unsorted_durations), key=itemgetter(1)))
+
+        self.batch_size = batch_size
+        self.batches_per_epoch = int(np.ceil(len(unsorted_feats) / batch_size))
         
         self.sorted_durations = list(sorted_durations)
         self.sorted_feats = unsorted_feats[np.array(indices_sorted)]
         self.sorted_texts = unsorted_texts[np.array(indices_sorted)]
-        self.batch_size = batch_size
-        self.batches_per_epoch = int(np.ceil(len(unsorted_feats) / batch_size))
+
+        # firstly split the sorted features and transcripts in self.batches_per_epoch
+        # arrays. So for instance if the durations of the sorted (increasing order) features are:
+        # [83, 105, 108, 254, 300] and self.batches_per_epoch = 3, the result after the split
+        # would be [[83, 105], [108, 254], [300]]
+        self.sorted_feats_batches = np.array_split(self.sorted_feats, self.batches_per_epoch)
+        self.sorted_texts_batches = np.array_split(self.sorted_texts, self.batches_per_epoch)
 
         
     def prepare_batch(self, features, texts):
@@ -67,34 +76,44 @@ class TrainDataGenerator(object):
             'texts': texts,  # list(str) Original texts
             'input_lengths': input_lengths,  # list(int) Length of each input
         }    
+
+    def iterate(self, features, texts, shuffle = True):
         
-    
-    def iterate(self, features, texts):
+        if shuffle:
+            feats_texts_batches = list(zip(features, texts))
+            random.shuffle(feats_texts_batches)
+            features[:], texts[:] = zip(*feats_texts_batches)
+
         pool = ThreadPoolExecutor(1)  # Run a single I/O thread in parallel
-        future = pool.submit(self.prepare_batch,
-                             features[:self.batch_size],
-                             texts[:self.batch_size])
-        start = self.batch_size
-        for i in range(self.batches_per_epoch - 1):
-            wait([future])
-            batch = future.result()
+        
+        for i in range(self.batches_per_epoch):
             # While the current minibatch is being consumed, prepare the next
             future = pool.submit(self.prepare_batch,
-                                 features[start: start + self.batch_size],
-                                 texts[start: start + self.batch_size])
+                                 features[i],
+                                 texts[i])
+            wait([future])
+            batch = future.result()
             yield batch
-            start += self.batch_size
-        # Wait on the last minibatch
-        wait([future])
-        batch = future.result()
-        yield batch
+            
+    def iterate_train(self, epoch, sortagrad=True):
+        # in order to maintain the order of the sorted arrays we
+        # just give to the generator a shallow copy of the class attributes
+        durations, features, texts = (self.sorted_durations.copy(),
+                                      self.sorted_feats_batches.copy(),
+                                      self.sorted_texts_batches.copy())
+        if epoch == 0 and sortagrad:
+            shuffle = False
+        else:
+            shuffle = True
         
-    
-    def iterate_train(self):
-        durations, features, texts = (self.sorted_durations,
-                                      self.sorted_feats,
-                                      self.sorted_texts)
+        return self.iterate(features, texts, shuffle)
+
+    def iterate_valid(self):
+        # in order to maintain the order of the sorted arrays we
+        # just give to the generator a shallow copy of the class attributes
+        durations, features, texts = (self.sorted_durations.copy(),
+                                      self.sorted_feats_batches.copy(),
+                                      self.sorted_texts_batches.copy())
         
         return self.iterate(features, texts)
-
                 
