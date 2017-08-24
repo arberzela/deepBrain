@@ -258,7 +258,7 @@ def main(argv=None):
 
                 valid_feed = {inputs: batch_valid_inputs,
                               targets: batch_valid_targets,
-                              seq_len: batch_valid_seq_len
+                              seq_len: batch_valid_seq_len,
                               prob: 1.0, # turn off dropout during validation
                               batch_size: len(batch_valid_inputs)} 
 
